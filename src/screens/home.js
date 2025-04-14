@@ -1,11 +1,16 @@
 import { Button, Text } from "react-native-paper";
 import { StyleSheet, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
  
 
 export default function Home({navigation}){
 
     return(
-        <View style={styles.container}>
+        <LinearGradient
+            colors={['#DFF5EB', '#FFFFFF']}
+            style={{flex:1}}
+        >
+            <View style={styles.container}>
             <Text style={styles.text}>
                 Guia acadêmico IFFar Panambi
             </Text>
@@ -18,10 +23,13 @@ export default function Home({navigation}){
             <Button style={styles.button} mode="outlined" onPress={()=>navigation.navigate('Sobre')}> 
                 Sobre o app
             </Button>
+            <Button style={styles.button} mode="outlined" onPress={()=>navigation.navigate('Login')}> 
+                Sair
+            </Button>
         </View>
+        </LinearGradient>
+        
     )
-
-
 
 }
 

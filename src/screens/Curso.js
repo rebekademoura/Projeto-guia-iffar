@@ -1,26 +1,38 @@
 import { Button, Text } from "react-native-paper";
 import { ScrollView, StyleSheet} from "react-native";
 import CursoCard from "../componentes/CursoCard";
+import { LinearGradient } from "expo-linear-gradient";
 
 
 const cursos_db = [
-    {nome: "Sistemas para Internet", modalidade: "Superior", turno: "Noturno"},
-    {nome: "Técnico em Informática", modalidade: "Técnico/Médio", turno: "Diurno"}
+    {   nome: "Sistemas para Internet", 
+        modalidade: "Superior",
+        nivel: "Superior", 
+        unidade:" IFFar - Campus Panambi",
+        duracao:"3 anos",
+        turno: "Noturno",
+        descricao:"Descrição do curso..."
+    }
 ]
 
 
 export default function Cursos({navigation}){
 
     return(
-        <ScrollView contentContainerStyle={styles.container}>
-            <Text style={styles.text}>
-                Lista de Cursos
-            </Text>
+        <LinearGradient
+            colors={['#DFF5EB', '#FFFFFF']}
+            style={{flex:1}}
+        >
+            <ScrollView contentContainerStyle={styles.container}>
+                <Text style={styles.title}>
+                    Lista de Cursos
+                </Text>
 
-            {cursos_db.map((curso, index) => (
-                <CursoCard key={index} {...curso} />
-            )) }
-        </ScrollView>
+                {cursos_db.map((curso, index) => (
+                    <CursoCard key={index} {...curso} OnPress={()=>navigation.navigate('DetalheCurso', curso)} />
+                )) }
+            </ScrollView>
+        </LinearGradient>
     )
 }
 
@@ -29,13 +41,13 @@ export default function Cursos({navigation}){
 const styles = StyleSheet.create({
     container:{
         flex:1,
-        justifyContent: 'center',
         padding:20
     },
     title:{
         fontSize: 24,
         marginBottom: 30,
-        textAlign: 'center'
+        textAlign: 'center',
+        paddingTop: 1
     },
     button:{
         marginVertical: 10
