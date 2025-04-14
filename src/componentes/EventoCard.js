@@ -1,54 +1,47 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet, View } from "react-native";
-import { Badge, Card, Text } from "react-native-paper";
-import { useTheme } from "react-native-paper";
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
+import { Card, Text, Badge, useTheme } from 'react-native-paper';
 
 
-export default function EventoCard({titulo, data, local, inscricao}){
 
+export default function EventoCard({ titulo, data, local, inscricao, onPress }) {
     const theme = useTheme();
 
-    const corBadge = inscricao === "aberta"?theme.colors.primary:"tomato";    
-    const textBadge = inscricao === "aberta"?"Inscrições abertas":"Inscrições encerradas";
+    const corBadge = inscricao === 'aberta'
+        ? theme.colors.primary
+        : theme.colors.secondary;
 
+    const textoBadge = inscricao === 'aberta' ? 'Inscrições abertas' : 'Inscrições Encerradas';
 
-
-    return(
-            <Card style={styles.card} mode="outlined">
-                <Card.Content>
-                    <View style={styles.header}>
-                        <Text variant="titleMedium"> {titulo} </Text>
-                        <Badge
-                            style={[styles.badge, {backgroundColor:corBadge}]}
-                            variant="bodyMedium">{textBadge}
-                        </Badge>
-                    </View>
-                        <Text variant="bodyMedium"> Local: {local} </Text>
-                        <Text variant="bodyMedium"> Data: {data} </Text>
-                </Card.Content>
-            </Card>  
-    )
+    return (
+        <Card style={styles.card} mode="outlined" onPress={onPress}>
+            <Card.Content>
+                <View style={styles.header}>
+                    <Text variant="titleMedium">{titulo}</Text>
+                    <Badge style={[styles.badge, { backgroundColor: corBadge }]}>
+                        {textoBadge}
+                    </Badge>
+                </View>
+                <Text variant="bodyMedium">Data: {data}</Text>
+                <Text variant="bodyMedium">Local: {local}</Text>
+            </Card.Content>
+        </Card>
+    );
 }
 
 const styles = StyleSheet.create({
-    card:{
-        marginBottom: 15
+    card: {
+        marginBottom: 12,
     },
-
-    header:{
+    header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: 8
+        marginBottom: 8,
     },
-
-    badge:{
+    badge: {
         color: '#fff',
         paddingHorizontal: 10,
-        fontSize:12
-    }
-
-
-
-
-})
+        fontSize: 12,
+    },
+});

@@ -1,52 +1,69 @@
-import { Button, Text } from "react-native-paper";
-import { StyleSheet, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
- 
+import React from 'react';
+import { View, StyleSheet, Image } from 'react-native';
+import { Button, Text } from 'react-native-paper';
+import { LinearGradient } from 'expo-linear-gradient';
 
-export default function Home({navigation}){
+export default function Home({ navigation }) {
+    return (
+        <LinearGradient colors={['#DFF5EB', '#FFFFFF']} style={styles.container}>
+            <View style={styles.centered}>
+                <Image
+                    source={require('../../assets/marca_pb.png')}
+                    style={styles.logo}
+                />
+                <Text style={styles.title}>Guia Acadêmico</Text>
 
-    return(
-        <LinearGradient
-            colors={['#DFF5EB', '#FFFFFF']}
-            style={{flex:1}}
-        >
-            <View style={styles.container}>
-            <Text style={styles.text}>
-                Guia acadêmico IFFar Panambi
-            </Text>
-            <Button style={styles.button} mode="contained" onPress={()=>navigation.navigate('Curso')}>
-                Ver Cursos
-            </Button>
-            <Button style={styles.button} mode="contained" onPress={()=>navigation.navigate('Evento')}> 
-                Ver Eventos
-            </Button>
-            <Button style={styles.button} mode="outlined" onPress={()=>navigation.navigate('Sobre')}> 
-                Sobre o app
-            </Button>
-            <Button style={styles.button} mode="outlined" onPress={()=>navigation.navigate('Login')}> 
-                Sair
-            </Button>
-        </View>
+                <Button
+                    mode="contained"
+                    onPress={() => navigation.navigate('Cursos')}
+                    style={styles.botao}
+                >
+                    Ver Cursos
+                </Button>
+
+                <Button
+                    mode="contained"
+                    onPress={() => navigation.navigate('Eventos')}
+                    style={styles.botao}
+                >
+                    Ver Eventos
+                </Button>
+
+                <Button
+                    mode="outlined"
+                    onPress={() => navigation.navigate('Sobre')}
+                    style={styles.botao}
+                >
+                    Sobre o App
+                </Button>
+            </View>
         </LinearGradient>
-        
-    )
-
+    );
 }
 
-
-// CSS, visual da aplicação
 const styles = StyleSheet.create({
-    container:{
-        flex:1,
+    container: {
+        flex: 1,
+    },
+    centered: {
+        flex: 1,
+        alignItems: 'center',
         justifyContent: 'center',
-        padding:20
+        padding: 20,
     },
-    title:{
-        fontSize: 24,
+    logo: {
+        width: 120,
+        height: 120,
+        marginBottom: 20,
+        resizeMode: 'contain',
+    },
+    title: {
+        fontSize: 22,
         marginBottom: 30,
-        textAlign: 'center'
+        textAlign: 'center',
     },
-    button:{
-        marginVertical: 10
-    }
-})
+    botao: {
+        width: '100%',
+        marginVertical: 8,
+    },
+});

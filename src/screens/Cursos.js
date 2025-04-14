@@ -27,7 +27,7 @@ const cursos_db = [
   ];
   
 
-export default function Curso({ navigation }) {
+export default function Cursos({ navigation }) {
     
     return (
     <ScrollView contentContainerStyle={styles.container}>

@@ -20,7 +20,7 @@ const eventos_db = [
     },
 ];
 
-export default function Evento({ navigation  }) {
+export default function Eventos({ navigation  }) {
   
     return (
         <ScrollView contentContainerStyle={styles.container}>
