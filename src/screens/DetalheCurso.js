@@ -41,7 +41,7 @@ export default function DetalheCurso({ route }) {
       </Card>
       <Button
                 mode="outlined"
-                onPress={() => navigation.goBack()}
+                onPress={() => navigation.navigate('Cursos')}
                 style={styles.botaoVoltar}
             >
                 Voltar

@@ -36,6 +36,13 @@ export default function Home({ navigation }) {
                 >
                     Sobre o App
                 </Button>
+                <Button
+                    mode="outlined"
+                    onPress={() => navigation.navigate('Login')}
+                    style={styles.botao}
+                >
+                    Sair
+                </Button>
             </View>
         </LinearGradient>
     );

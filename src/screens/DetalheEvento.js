@@ -4,7 +4,7 @@ import { Text, Card, Badge, Divider, Button, useTheme } from 'react-native-paper
 import { useNavigation } from '@react-navigation/native';
 
 export default function DetalheEvento({ route }) {
-    const { titulo, data, local, inscricao, descricao } = route.params;
+    const { nome, data, local, inscricao, descricao } = route.params;
     const theme = useTheme();
     const navigation = useNavigation();
 
@@ -16,14 +16,14 @@ export default function DetalheEvento({ route }) {
             <Card mode="outlined" style={styles.card}>
                 <Card.Content>
                     <View style={styles.header}>
-                        <Text variant="titleLarge">{titulo}</Text>
+                        <Text variant="titleLarge">{nome}</Text>
                         <Badge style={[styles.badge, { backgroundColor: corBadge }]}>
                             {textoBadge}
                         </Badge>
                     </View>
 
                     <Divider style={styles.divisor} />
-                    <Text variant="bodyMedium">📅 Data: {data}</Text>
+                    <Text variant="bodyMedium">📅 Data: {format(data,'dd/MM/yyyy')}</Text>
                     <Text variant="bodyMedium">📍 Local: {local}</Text>
 
                     <Divider style={styles.divisor} />

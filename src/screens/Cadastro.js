@@ -1,100 +1,63 @@
-import { Button, Text, TextInput } from "react-native-paper";
-import { StyleSheet, View } from "react-native";
-import { useState } from "react";
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import { TextInput, Button, Text } from 'react-native-paper';
+import { useNavigation } from '@react-navigation/native';
 
-export default function Cadastro({ navigation }) {
-    const [nome, setNome] = useState("");
-    const [email, setEmail] = useState("");
-    const [senha, setSenha] = useState("");
-    const [confirmarSenha, setConfirmarSenha] = useState("");
+export default function Cadastro() {
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [carregando, setCarregando] = useState(false);
 
-    const handleCadastro = () => {
-        // Aqui pode entrar a lógica de validação ou envio para API
-        if (senha !== confirmarSenha) {
-            alert("As senhas não coincidem!");
-            return;
-        }
+  const navigation = useNavigation();
 
-        // Exemplo de redirecionamento após cadastro
-        navigation.navigate('Home');
-    };
+  const cadastrar = () =>{
+    console.log(nome, email, senha);
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>
-                Criar Conta
-            </Text>
+    setCarregando(false);
+  }
 
-            <TextInput
-                label="Nome completo"
-                value={nome}
-                onChangeText={text => setNome(text)}
-                style={styles.input}
-                mode="outlined"
-            />
+  
+  return (
+    <View style={styles.container}>
+      <Text variant="titleLarge" style={{ marginBottom: 16 }}>Criar Conta</Text>
 
-            <TextInput
-                label="E-mail"
-                value={email}
-                onChangeText={text => setEmail(text)}
-                style={styles.input}
-                mode="outlined"
-                keyboardType="email-address"
-                autoCapitalize="none"
-            />
+      <TextInput
+        label="Nome completo"
+        value={nome}
+        style={styles.input}
+        onChangeText={setNome}
+      />
+      <TextInput
+        label="E-mail"
+        value={email}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        style={styles.input}
+        onChangeText={setEmail}
+      />
+      <TextInput
+        label="Senha"
+        value={senha}
+        secureTextEntry
+        style={styles.input}
+        onChangeText={setSenha}
+      />
 
-            <TextInput
-                label="Senha"
-                value={senha}
-                onChangeText={text => setSenha(text)}
-                style={styles.input}
-                mode="outlined"
-                secureTextEntry
-            />
+      <Button mode="contained" 
+            onPress={cadastrar} 
+            loading={carregando}>
+        Cadastrar
+      </Button>
 
-            <TextInput
-                label="Confirmar Senha"
-                value={confirmarSenha}
-                onChangeText={text => setConfirmarSenha(text)}
-                style={styles.input}
-                mode="outlined"
-                secureTextEntry
-            />
-
-            <Button
-                style={styles.button}
-                mode="contained"
-                onPress={handleCadastro}
-            >
-                Cadastrar
-            </Button>
-
-            <Button
-                style={styles.button}
-                mode="outlined"
-                onPress={() => navigation.navigate('Login')}
-            >
-                Já tenho uma conta
-            </Button>
-        </View>
-    );
+      <Button onPress={() => navigation.navigate('Login')} style={{ marginTop: 8 }}>
+        Já tenho conta
+      </Button>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        padding: 20,
-    },
-    title: {
-        fontSize: 22,
-        textAlign: 'center',
-        marginBottom: 30,
-    },
-    input: {
-        marginBottom: 15,
-    },
-    button: {
-        marginVertical: 10,
-    }
+  container: { padding: 24, flex: 1, justifyContent: 'center' },
+  input: { marginBottom: 16 },
 });

@@ -15,6 +15,11 @@ import Sobre from './src/screens/Sobre';
 import DetalheCurso from './src/screens/DetalheCurso';
 import DetalheEvento from './src/screens/DetalheEvento';
 
+import Login from './src/screens/Login';
+import Cadastro from './src/screens/Cadastro';
+
+
+
 //importação do tema
 import { tema } from './src/config/tema'; 
 
@@ -70,6 +75,9 @@ export default function App() {
           <Tab.Screen name="DetalheCurso" component={DetalheCurso} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
           
           <Tab.Screen name="DetalheEvento" component={DetalheEvento} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
+          <Tab.Screen name="Login" component={Login} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
+          <Tab.Screen name="Cadastro" component={Cadastro} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
+
         
         </Tab.Navigator>
       </NavigationContainer>

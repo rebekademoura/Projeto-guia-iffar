@@ -1,44 +1,47 @@
-import React from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
-import { Text } from 'react-native-paper';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, StyleSheet} from 'react-native';
+import { Text, ActivityIndicator } from 'react-native-paper';
 import EventoCard from '../componentes/EventoCard';
-
-const eventos_db = [
-    {
-        titulo: 'Semana Acadêmica',
-        data: '25/09/2025',
-        local: 'Auditório',
-        inscricao: 'aberta',
-        descricao: 'Evento com palestras, oficinas e apresentações de projetos dos alunos.',
-    },
-    {
-        titulo: 'Feira de Profissões',
-        data: '10/10/2025',
-        local: 'Bloco B',
-        inscricao: 'fechada',
-        descricao: 'Apresentação dos cursos técnicos e superiores do IFFar.',
-    },
-];
-
-export default function Eventos({ navigation  }) {
+import { supabase } from '../config/supabase';
   
+
+export default function Eventos({ navigation }) {
+
+    const [eventos, setEventos] = useState([]);
+    const [carregando, setCarregando] = useState(true);
+
+    useEffect(()=>{
+        async function buscarEventos() {
+            const {data, error} = await supabase.from('eventos').select('*'); //pode retornar dados, ou erros
+
+            if(error){
+                console.log(error);
+            }
+            else{
+              setEventos(data);
+            }
+            setCarregando(false);
+        }
+        buscarEventos();
+    }, [] )
+    
     return (
-        <ScrollView contentContainerStyle={styles.container}>
-            <Text variant="titleLarge" style={styles.titulo}>Eventos Acadêmicos</Text>
+    <ScrollView contentContainerStyle={styles.container}>
+      <Text variant="titleLarge" style={styles.titulo}>Eventos do Campus</Text>
+      
 
-            {eventos_db.map((evento, index) => (
-                <EventoCard
-                    key={index}
-                    {...evento}
-                    onPress={() => navigation.navigate('DetalheEvento', evento)} 
+      {carregando && <ActivityIndicator animating/>} 
+      {!carregando && eventos.length==0 && <Text>Não tem registro</Text>}
 
-                />
-            ))}
-        </ScrollView>
-    );
+      {eventos.map((eventos, index) => (
+        <EventoCard key={index} {...eventos} onPress={() => navigation.navigate('DetalheEvento', eventos)} />
+      ))}
+
+    </ScrollView>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: { padding: 20 },
-    titulo: { marginBottom: 16 },
+  container: { padding: 20 },
+  titulo: { marginBottom: 16 },
 });

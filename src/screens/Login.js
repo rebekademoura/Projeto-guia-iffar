@@ -2,8 +2,9 @@ import { Button, Text, TextInput } from "react-native-paper";
 import { StyleSheet, View } from "react-native";
 import { useState } from "react";
 
+
 export default function Login({ navigation }) {
-    const [email, setEmail] = useState("");
+    const [nome, setNome] = useState("");
     const [senha, setSenha] = useState("");
 
     return (
@@ -14,11 +15,10 @@ export default function Login({ navigation }) {
 
             <TextInput
                 label="E-mail"
-                value={email}
-                onChangeText={text => setEmail(text)}
+                value={nome}
+                onChangeText={text => setNome(text)}
                 style={styles.input}
                 mode="outlined"
-                keyboardType="email-address"
                 autoCapitalize="none"
             />
 
