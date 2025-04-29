@@ -2,6 +2,8 @@ import React from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Text, Card, Badge, Divider, Button, useTheme } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { format } from 'date-fns';
+
 
 export default function DetalheEvento({ route }) {
     const { nome, data, local, inscricao, descricao } = route.params;
