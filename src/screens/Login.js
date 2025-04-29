@@ -1,11 +1,31 @@
 import { Button, Text, TextInput } from "react-native-paper";
 import { StyleSheet, View } from "react-native";
 import { useState } from "react";
+import { set } from "date-fns";
+import { supabase } from "../config/supabase";
+
 
 
 export default function Login({ navigation }) {
-    const [nome, setNome] = useState("");
+    const [email, setEmail] = useState("");
     const [senha, setSenha] = useState("");
+    const [loading, setLoading] = useState(false)
+
+    async function signInWithEmail() {
+        setLoading(true);
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
+          password: senha,
+        });
+      
+        if (error) {
+          alert(error.message);
+        } else {
+          navigation.navigate('Home'); 
+        }
+      
+        setLoading(false);
+      }
 
     return (
         <View style={styles.container}>
@@ -15,8 +35,8 @@ export default function Login({ navigation }) {
 
             <TextInput
                 label="E-mail"
-                value={nome}
-                onChangeText={text => setNome(text)}
+                value={email}
+                onChangeText={text => setEmail(text)}
                 style={styles.input}
                 mode="outlined"
                 autoCapitalize="none"
@@ -29,18 +49,18 @@ export default function Login({ navigation }) {
                 style={styles.input}
                 mode="outlined"
                 secureTextEntry
+                autoCapitalize="none"
             />
 
-            <Button
+            <Button 
                 style={styles.button}
-                mode="contained"
-                onPress={() => {
-                    // Aqui você pode adicionar a lógica de login
-                    navigation.navigate('Home');
-                }}
-            >
+                mode="outlined"
+                title="Sign in"     
+                onPress={() => signInWithEmail()} 
+            >   
                 Entrar
             </Button>
+
 
             <Button
                 style={styles.button}
