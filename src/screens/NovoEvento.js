@@ -52,6 +52,7 @@ export default function NovoEvento({navigate}) {
 
   };
     
+  //se não eiste usuário logado e se ele possui tipo admin
     if (!perfil || perfil.tipo !== 'admin') {
         return (
             <ScrollView contentContainerStyle={styles.container}>
