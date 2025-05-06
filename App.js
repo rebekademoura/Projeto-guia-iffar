@@ -17,67 +17,58 @@ import DetalheEvento from './src/screens/DetalheEvento';
 
 import Login from './src/screens/Login';
 import Cadastro from './src/screens/Cadastro';
+import NovoEvento from './src/screens/NovoEvento';
 
 //importação do tema
 import { tema } from './src/config/tema'; 
+import { UsuarioProvider } from './src/contexto/UsuarioContexto';
 
 const Tab = createBottomTabNavigator();
 
 export default function App() {
   return (
     <PaperProvider theme={tema}>
-   <NavigationContainer>
-        <Tab.Navigator
-          screenOptions={{
-            headerShown: true,
-            tabBarActiveTintColor: tema.colors.primary,
-          }}
-        >
-                    <Tab.Screen name="Cadastro" component={Cadastro} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
+      <UsuarioProvider>
+        <NavigationContainer>
+          <Tab.Navigator screenOptions={{ headerShown: true, tabBarActiveTintColor: tema.colors.primary, }} >
+            <Tab.Screen name="Cadastro" component={Cadastro} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
 
-          <Tab.Screen
-            name="Home"
-            component={Home}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <MaterialCommunityIcons name="home" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="Cursos"
-            component={Cursos}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <MaterialCommunityIcons name="book-outline" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="Eventos"
-            component={Eventos}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <MaterialCommunityIcons name="calendar-month-outline" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tab.Screen
-            name="Sobre"
-            component={Sobre}
-            options={{
-              tabBarIcon: ({ color, size }) => (
-                <MaterialCommunityIcons name="information-outline" size={size} color={color} />
-              ),
-            }}
-          />
-          <Tab.Screen name="DetalheCurso" component={DetalheCurso} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
-          <Tab.Screen name="DetalheEvento" component={DetalheEvento} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
-          <Tab.Screen name="Login" component={Login} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
+            <Tab.Screen
+              name="Home"
+              component={Home}
+              options={{
+                tabBarIcon: ({ color, size }) => (<MaterialCommunityIcons name="home" size={size} color={color} />),}}
+            />
+
+            <Tab.Screen
+              name="Cursos"
+              component={Cursos}
+              options={{
+                tabBarIcon: ({ color, size }) => (<MaterialCommunityIcons name="book-outline" size={size} color={color} />),}}
+            />
+            <Tab.Screen
+              name="Eventos"
+              component={Eventos}
+              options={{
+                tabBarIcon: ({ color, size }) => (<MaterialCommunityIcons name="calendar-month-outline" size={size} color={color} />),}}
+            />
+
+            <Tab.Screen
+              name="Sobre"
+              component={Sobre}
+              options={{
+                tabBarIcon: ({ color, size }) => (
+                  <MaterialCommunityIcons name="information-outline" size={size} color={color} />),}}
+            />
+            <Tab.Screen name="DetalheCurso" component={DetalheCurso} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
+            <Tab.Screen name="DetalheEvento" component={DetalheEvento} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
+            <Tab.Screen name="Login" component={Login} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
+            <Tab.Screen name="NovoEvento" component={NovoEvento} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
 
         
-        </Tab.Navigator>
-      </NavigationContainer>
+          </Tab.Navigator>
+        </NavigationContainer>
+      </UsuarioProvider>
     </PaperProvider>
   );
 }

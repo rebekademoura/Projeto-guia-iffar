@@ -1,96 +1,97 @@
-import { Button, Text, TextInput } from "react-native-paper";
-import { StyleSheet, View } from "react-native";
-import { useState } from "react";
-import { set } from "date-fns";
-import { supabase } from "../config/supabase";
+import React, { useState } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
+import { TextInput, Button, Text } from 'react-native-paper';
+import { supabase } from '../config/supabase';
+import { useNavigation } from '@react-navigation/native';
+import { useUsuario } from '../contexto/UsuarioContexto';
 
+export default function Login() {
+  const [email, setEmail] = useState('');
+  const [senha, setSenha] = useState('');
+  const [carregando, setCarregando] = useState(false);
+  
 
+  const navigation = useNavigation();
+  
+  const { setUsuario, setPerfil } = useUsuario(); 
 
-export default function Login({ navigation }) {
-    const [email, setEmail] = useState("");
-    const [senha, setSenha] = useState("");
-    const [loading, setLoading] = useState(false)
+  const fazerLogin = async () => {
+    setCarregando(true);
 
-    async function signInWithEmail() {
-        setLoading(true);
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email: email,
-          password: senha,
-        });
-      
-        if (error) {
-          alert(error.message);
-        } else {
-          navigation.navigate('Home'); 
-        }
-      
-        setLoading(false);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password: senha,
+    });
+
+    if (error) {
+      console.log('Erro no login:', error);
+
+      Alert.alert('Erro', 'Email ou senha inválidos.');
+      setCarregando(false);
+      return;
+    }
+
+    const user = data.user;
+
+    if (user) { 
+      // buscar dados complementares da tabela usuarios
+      const { data: perfilUsuario, error: erroPerfil } = await supabase
+        .from('usuarios')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (erroPerfil) {
+        Alert.alert('Erro', 'Não foi possível buscar o perfil do usuário.');
+        setCarregando(false);
+        return;
       }
 
-    return (
-        <View style={styles.container}>
-            <Text style={styles.title}>
-                Bem-vindo(a) ao Guia Acadêmico IFFar Panambi
-            </Text>
+      setUsuario(user);
 
-            <TextInput
-                label="E-mail"
-                value={email}
-                onChangeText={text => setEmail(text)}
-                style={styles.input}
-                mode="outlined"
-                autoCapitalize="none"
-            />
+      setPerfil(perfilUsuario);
 
-            <TextInput
-                label="Senha"
-                value={senha}
-                onChangeText={text => setSenha(text)}
-                style={styles.input}
-                mode="outlined"
-                secureTextEntry
-                autoCapitalize="none"
-            />
+      Alert.alert('Sucesso', 'Login realizado com sucesso!');
 
-            <Button 
-                style={styles.button}
-                mode="outlined"
-                title="Sign in"     
-                onPress={() => signInWithEmail()} 
-            >   
-                Entrar
-            </Button>
+      navigation.navigate('Home');
+    }
 
+    setCarregando(false);
+  };
 
-            <Button
-                style={styles.button}
-                mode="outlined"
-                onPress={() => {
-                    // Navegar para uma tela de cadastro, por exemplo
-                    navigation.navigate('Cadastro');
-                }}
-            >
-                Criar conta
-            </Button>
-        </View>
-    );
+  return (
+    <View style={styles.container}>
+      <Text variant="titleLarge" style={{ marginBottom: 16 }}>Entrar</Text>
+
+      <TextInput
+        label="E-mail"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+        style={styles.input}
+      />
+
+      <TextInput
+        label="Senha"
+        value={senha}
+        onChangeText={setSenha}
+        secureTextEntry
+        style={styles.input}
+      />
+
+      <Button mode="contained" onPress={fazerLogin} loading={carregando}>
+        Entrar
+      </Button>
+
+      <Button onPress={() => navigation.navigate('Cadastro')} style={{ marginTop: 8 }}>
+        Ainda não tenho conta
+      </Button>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-        padding: 20,
-    },
-    title: {
-        fontSize: 22,
-        textAlign: 'center',
-        marginBottom: 30,
-    },
-    input: {
-        marginBottom: 15,
-    },
-    button: {
-        marginVertical: 10,
-    }
+  container: { padding: 24, flex: 1, justifyContent: 'center' },
+  input: { marginBottom: 16 },
 });

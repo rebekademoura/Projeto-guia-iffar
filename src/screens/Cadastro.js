@@ -42,7 +42,7 @@ export default function Cadastro() {
     if (id) {   
       const { error: erroUsuario } = await 
       supabase.from('usuarios').insert([
-        { id, nome, tipo: 'aluno' }
+        { id, nome, tipo: 'admin' }
       ]);
 
       if (erroUsuario) {
