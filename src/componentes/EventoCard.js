@@ -1,28 +1,91 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Card, Text, Badge, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import {format} from 'date-fns';
+import { supabase } from '../config/supabase';
+import { useUsuario } from '../contexto/UsuarioContexto';
 
 
 
-export default function EventoCard({ nome, data, local, inscricao, onPress }) {
-    const theme = useTheme();
+export default function EventoCard({ nome, data, local, evento_id, onPress }) {
+  const theme = useTheme();
+  const { eventosInscritos } = useUsuario();
 
-    const corBadge = inscricao === 'aberta'
-        ? theme.colors.primary
-        : theme.colors.secondary;
+  const inscricao = eventosInscritos.find(e => e.evento_id === evento_id);
+  const status = inscricao?.status;
 
-    const textoBadge = inscricao === 'aberta' ? 'Inscrições abertas' : 'Inscrições Encerradas';
+  let textoBadge = '';
+  let corBadge = '';
 
+  if (status) {
+    if (status === 'confirmada') {
+      corBadge = '#4CAF50'; textoBadge = 'Inscrição Confirmada';
+    } else if (status === 'cancelada') {
+      corBadge = '#F44336'; textoBadge = 'Inscrição Cancelada';
+    } else if (status === 'em espera') {
+      corBadge = '#FF9800'; textoBadge = 'Em Espera';
+    } else {
+      corBadge = '#9E9E9E'; textoBadge = 'Status Desconhecido';
+    }
+    console.log('Status do evento:', status);
+
+  }
+
+    /*
+    if (status) {
+        if (status === 'confirmada') {
+            corBadge = '#4CAF50'; // verde
+            textoBadge = 'Inscrição Confirmada';
+        } else if (status === 'cancelada') {
+            corBadge = '#F44336'; // vermelho
+            textoBadge = 'Inscrição Cancelada';
+        } else if (status === 'em espera') {
+            corBadge = '#FF9800'; // laranja
+            textoBadge = 'Inscrição em Espera';
+        } else {
+            corBadge = '#9E9E9E'; // cinza
+            textoBadge = 'Status Desconhecido';
+        }
+    } else {
+        corBadge = inscricao === true ? theme.colors.primary : theme.colors.secondary;
+        textoBadge = inscricao === true ? 'Inscrições abertas' : 'Inscrições encerradas';
+    }
+        
+    {eventos.map((evento, index) => {
+        let textoBadge = '';
+        let corBadge = '';
+
+        if (evento.status) {
+          if (evento.status === 'confirmada') {
+            corBadge = '#4CAF50'; // verde
+            textoBadge = 'Inscrição Confirmada';
+          } else if (evento.status === 'cancelada') {
+            corBadge = '#F44336'; // vermelho
+            textoBadge = 'Inscrição Cancelada';
+          } else if (evento.status === 'em espera') {
+            corBadge = '#FF9800'; // laranja
+            textoBadge = 'Inscrição em Espera';
+          } else {
+            corBadge = '#9E9E9E'; // cinza
+            textoBadge = 'Status Desconhecido';
+          }
+        } else {
+          corBadge = theme.colors.secondary;
+          textoBadge = 'Sem Status';
+        }
+    
+    */
     return (
         <Card style={styles.card} mode="outlined" onPress={onPress}>
             <Card.Content>
                 <View style={styles.header}>
                     <Text variant="titleMedium" style={styles.nome}>{nome}</Text>
-                    <Badge style={[styles.badge, { backgroundColor: corBadge }]}>
-                        {textoBadge}
-                    </Badge>
+                    {status && (
+  <Badge style={[styles.badge, { backgroundColor: corBadge }]}>
+    olá
+  </Badge>
+)}
                 </View>
                 <View style={styles.info}>
                     <MaterialCommunityIcons name="clock-outline" size={16} />

@@ -9,6 +9,7 @@ export const UsuarioProvider = ({children}) => {
     
     const [Usuario, setUsuario] = useState(null);
     const [perfil, setPerfil] = useState(null);
+    const [eventosInscritos, setEventosInscritos] = useState([]);
 
     const [carregando, setCarregando] = useState(true);
 
@@ -17,6 +18,22 @@ export const UsuarioProvider = ({children}) => {
         setUsuario(null);
         setPerfil(null);
     }
+
+    const atualizarEventosInscritos = async (usuarioId) => {
+    const { data, error } = await supabase
+      .from('inscricoes')
+      .select('evento_id, status')
+      .eq('usuario_id', usuarioId);
+
+    if (!error) {
+      setEventosInscritos(data);
+    } else {
+      console.error('Erro ao carregar eventos inscritos:', error.message);
+    }
+    };
+
+
+    
     
     return (
         <UsuarioContext.Provider
@@ -28,6 +45,9 @@ export const UsuarioProvider = ({children}) => {
                 carregando,
                 setCarregando,
                 logout,
+                eventosInscritos, 
+                atualizarEventosInscritos
+
             }}
         >
             {children}
@@ -37,3 +57,4 @@ export const UsuarioProvider = ({children}) => {
 };
 
 export const useUsuario =() => useContext(UsuarioContext);
+export const useEventos =() => useContext(UsuarioContext);

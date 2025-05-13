@@ -19,6 +19,10 @@ import Login from './src/screens/Login';
 import Cadastro from './src/screens/Cadastro';
 import NovoEvento from './src/screens/NovoEvento';
 
+//inscrições
+import InscricaoEvento from './src/inscricoes/InscricaoEvento';
+
+
 //importação do tema
 import { tema } from './src/config/tema'; 
 import { UsuarioProvider } from './src/contexto/UsuarioContexto';
@@ -64,6 +68,7 @@ export default function App() {
             <Tab.Screen name="DetalheEvento" component={DetalheEvento} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
             <Tab.Screen name="Login" component={Login} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
             <Tab.Screen name="NovoEvento" component={NovoEvento} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
+            <Tab.Screen name="InscricaoEvento" component={InscricaoEvento} options={{ tabBarButton: () => null, tabBarStyle: { display: 'none' } }} />
 
         
           </Tab.Navigator>

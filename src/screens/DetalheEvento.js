@@ -5,13 +5,16 @@ import { useNavigation } from '@react-navigation/native';
 import { format } from 'date-fns';
 
 
+
+
 export default function DetalheEvento({ route }) {
-    const { nome, data, local, inscricao, descricao } = route.params;
+    const { id, nome, data, local, inscricao, descricao } = route.params;
     const theme = useTheme();
     const navigation = useNavigation();
 
-    const corBadge = inscricao === 'aberta' ? theme.colors.primary : theme.colors.outline;
-    const textoBadge = inscricao === 'aberta' ? 'Inscrições abertas' : 'Encerradas';
+    const corBadge = inscricao === true ? theme.colors.primary : theme.colors.outline;
+    const textoBadge = inscricao === true ? 'Inscrições abertas' : 'Encerradas';
+
 
     return (
         <ScrollView contentContainerStyle={styles.container}>
@@ -32,13 +35,19 @@ export default function DetalheEvento({ route }) {
                     <Text variant="titleSmall" style={styles.subtitulo}>Descrição:</Text>
                     <Text style={styles.descricao}>{descricao}</Text>
                 </Card.Content>
+
+                <Button
+                mode="outlined"
+                onPress={() => navigation.navigate('InscricaoEvento',{evento_id: route.params.id })}
+                style={styles.botaoInscrever}>
+                    Quero me inscrever
+                </Button>       
             </Card>
 
             <Button
                 mode="outlined"
                 onPress={() => navigation.navigate('Eventos')}
-                style={styles.botaoVoltar}
-            >
+                style={styles.botaoVoltar}>
                 Voltar
             </Button>
         </ScrollView>
@@ -62,4 +71,6 @@ const styles = StyleSheet.create({
     subtitulo: { marginBottom: 4 },
     descricao: { marginTop: 8, lineHeight: 20 },
     botaoVoltar: { marginTop: 10 },
+    botaoInscrever: { marginTop: 10, color: '#C4112F',},
+
 });

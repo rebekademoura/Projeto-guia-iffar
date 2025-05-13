@@ -14,6 +14,8 @@ export default function Login() {
   const navigation = useNavigation();
   
   const { setUsuario, setPerfil } = useUsuario(); 
+  const { atualizarEventosInscritos } = useUsuario();
+
 
   const fazerLogin = async () => {
     setCarregando(true);
@@ -24,9 +26,9 @@ export default function Login() {
     });
 
     if (error) {
-      console.log('Erro no login:', error);
+      alert('Erro no login:', error);
 
-      Alert.alert('Erro', 'Email ou senha inválidos.');
+      alert('Erro', 'Email ou senha inválidos.');
       setCarregando(false);
       return;
     }
@@ -48,12 +50,12 @@ export default function Login() {
       }
 
       setUsuario(user);
+setPerfil(perfilUsuario);
 
-      setPerfil(perfilUsuario);
+await atualizarEventosInscritos(perfilUsuario.id);
 
-      Alert.alert('Sucesso', 'Login realizado com sucesso!');
-
-      navigation.navigate('Home');
+Alert.alert('Sucesso', 'Login realizado com sucesso!');
+navigation.navigate('Home');
     }
 
     setCarregando(false);

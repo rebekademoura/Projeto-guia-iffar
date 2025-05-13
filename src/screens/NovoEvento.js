@@ -12,6 +12,12 @@ export default function NovoEvento({navigate}) {
   const [dataTime,   setDataTime]   = useState('');
   const [local,      setLocal]      = useState();
   const [descricao,  setDescricao]  = useState('');
+  const [inscricao,  setInscricao]  = useState(''); //abertas ou fechadas
+  const [total_vagas,  setTotalVagas]  = useState('');
+  const [vagas_disponiveis,  setVagasDisponiveis]  = useState('');
+
+
+
   const [carregando, setCarregando] = useState(false);
 
 
@@ -22,7 +28,7 @@ export default function NovoEvento({navigate}) {
     
 
     
-    if (!nome || !dataTime || !local || !descricao) {
+    if (!nome || !dataTime || !local || !descricao || !total_vagas) {
       alert('Campos obrigatórios', 'Preencha todos os campos.');
       return;
     }
@@ -38,7 +44,9 @@ export default function NovoEvento({navigate}) {
         { nome, 
           data: dataFormatada.toISOString(), 
           local, 
-          descricao}
+          descricao,
+          inscricao: true,
+          total_vagas}
       ]);
 
       setCarregando(false);
@@ -99,6 +107,12 @@ export default function NovoEvento({navigate}) {
                     label="Descrição"
                     value={descricao}
                     onChangeText={setDescricao}
+                    style={styles.input}
+                />
+                <TextInput
+                    label="Quantidade de vagas disponíveis"
+                    value={total_vagas}
+                    onChangeText={setTotalVagas}
                     style={styles.input}
                 />
     
