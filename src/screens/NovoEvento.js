@@ -25,40 +25,49 @@ export default function NovoEvento({navigate}) {
   const { perfil} = useUsuario();
 
   const novoEvento = async () => {
-    
+  const vagas_disponiveis = total_vagas;
 
-    
-    if (!nome || !dataTime || !local || !descricao || !total_vagas) {
-      alert('Campos obrigatórios', 'Preencha todos os campos.');
-      return;
-    }
-
-    setCarregando(true);
-
-    const dataFormatada = new Date(dataTime.replace(' ', 'T'));
-
-
-     //parte 2 do fluxo - cadastrar na nossa 
-      const { error: erroUsuario } = await 
-      supabase.from('eventos').insert([
-        { nome, 
-          data: dataFormatada.toISOString(), 
-          local, 
-          descricao,
-          inscricao: true,
-          total_vagas}
-      ]);
-
-      setCarregando(false);
-
-  if (erroUsuario) {
-    alert('Erro ao cadastrar novo evento: ' + erroUsuario.message);
-  } else {
-    alert('Evento cadastrado com sucesso!');
-    navigation.navigate('Eventos');
+  if (!nome || !dataTime || !local || !descricao || !total_vagas) {
+    Alert.alert('Campos obrigatórios', 'Preencha todos os campos.');
+    return;
   }
 
-  };
+  let dataFormatada;
+
+  try {
+    dataFormatada = new Date(dataTime.replace(' ', 'T'));
+    if (isNaN(dataFormatada.getTime())) {
+      throw new Error('Data inválida');
+    }
+  } catch (error) {
+    Alert.alert('Data inválida', 'A data informada está em um formato incorreto.');
+    return;
+  }
+
+  setCarregando(true);
+
+  const { error: erroUsuario } = await supabase.from('eventos').insert([
+    {
+      nome,
+      data: dataFormatada.toISOString(),
+      local,
+      descricao,
+      inscricao: true,
+      total_vagas,
+      vagas_disponiveis,
+    },
+  ]);
+
+  setCarregando(false);
+
+  if (erroUsuario) {
+    Alert.alert('Erro ao cadastrar novo evento', erroUsuario.message);
+  } else {
+    Alert.alert('Sucesso', 'Evento cadastrado com sucesso!');
+    navigation.navigate('Eventos');
+  }
+};
+
     
   //se não eiste usuário logado e se ele possui tipo admin
     if (!perfil || perfil.tipo !== 'admin') {

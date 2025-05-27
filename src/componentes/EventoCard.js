@@ -4,20 +4,34 @@ import { StyleSheet, View } from 'react-native';
 import { Card, Text, Badge, Button, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
-import { useUsuario } from '../contexto/UsuarioContexto';
 import { supabase } from '../config/supabase';
 
 
 
-export default function EventoCard({
-  id,
-  nome,
-  data,
-  local,
-  onPress,
-}) {
-  const theme = useTheme();
-  const [inscrito, setInscrito] = useState(false);
+export default function EventoCard({id,nome,data,local,onPress }) {
+ useEffect(() => {
+   const canal = supabase
+     .channel('realtime:eventos')
+     .on('postgres_changes', {
+       event: '*',
+       schema: 'public',
+       table: 'eventos',
+     }, (payload) => {
+       console.log('Atualização recebida:', payload);
+       // Atualize o estado aqui
+     })
+     .subscribe();
+ 
+   return () => {
+     supabase.removeChannel(canal);
+   };
+ }, []);
+
+
+
+
+  const theme = useTheme(); //tema de cores
+  const [inscrito, setInscrito] = useState(false); //pega user
 
   // Verifica se o usuário já está inscrito no evento
   useEffect(() => {
@@ -30,54 +44,51 @@ export default function EventoCard({
     console.log('Usuário retornado pelo Supabase:', user);
     console.log('ID do evento recebido no EventoCard:', id);
 
-    if (userError || !user) {
+    if (userError || !user) { //verificando se tem usuario logado
       console.error('Erro ao obter usuário:', userError);
       return;
     }
+      const statusConfirmada = 'confirmada'; 
 
-    const { data: allRows, error: allError } = await supabase
-      .from('inscricoes')
-      .select('*');
-
-    console.log('Todas as inscrições no banco:', allRows);
-
-    const { data: rows, error } = await supabase
+    const { data: rows, error } = await supabase //pegando no DB todos os eventos
       .from('inscricoes')
       .select('*')
       .eq('evento_id', id)
-      .eq('usuario_id', user.id);
+      .eq('usuario_id', user.id)
+      .eq('status',statusConfirmada);
 
-    console.log('Resultado da busca com filtros:', rows);
 
-    if (error) {
+    if (error) { //nao encontrou nada
       console.error('Erro ao verificar inscrição:', error);
       return;
     }
 
-    setInscrito(rows.length > 0);
+    setInscrito(rows.length > 0); //se tiver mais de uma linha OK com user = evento_id 
   }
 
-  checarInscricao();
+  checarInscricao(); //retorna os dados
+
+  
 }, [id]);
 
 
-  const agora = new Date();
-  const dataEvento = new Date(data);
+  const agora = new Date(); //data atual
+  const dataEvento = new Date(data); //data que vai acontecer o evento
 
   // Define texto e cor do badge
   let textoBadge, corBadge;
-  if (inscrito) {
+  if (inscrito) { //se resultado > 0 = tem inscrito
     textoBadge = 'Você já está inscrito';
     corBadge = theme.colors.primary;
-  } else if (agora > dataEvento) {
+  } else if (agora > dataEvento) { //senão data de hoje maior que a data evento = inscrições encerradas
     textoBadge = 'Inscrições encerradas';
     corBadge = theme.colors.disabled;
-  } else {
+  } else { //senao = inscrições abertas
     textoBadge = 'Inscrições abertas';
     corBadge = theme.colors.secondary;
   }
 
-  const podeInscrever = !inscrito && agora <= dataEvento;
+  const podeInscrever = !inscrito && agora <= dataEvento; //se usuário não está inscrito, nem data < evento = inscrição liberada
 
 
   return (
