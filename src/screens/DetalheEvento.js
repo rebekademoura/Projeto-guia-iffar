@@ -1,64 +1,73 @@
 import React, { useState, useEffect } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
-import { Text, Card, Badge, Divider, Button, useTheme } from 'react-native-paper';
+import {
+  Text,
+  Card,
+  Badge,
+  Divider,
+  Button,
+  useTheme,
+  Modal,
+  TextInput,
+  Portal,
+  IconButton,
+} from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { format } from 'date-fns';
 import { supabase } from '../config/supabase';
 import { useUsuario } from '../contexto/UsuarioContexto';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
+import { inscreverUsuario } from '../servicos/inscreverUsuario';
+import { cancelarInscricao } from '../servicos/cancelarinscricao';
+import { enviarComentario } from '../servicos/enviarComentario';
+import { curtirEvento } from '../servicos/curtirEvento';
+import GaleriaImagensEvento from '../componentes/galeriaImagensEvento';
 
 export default function DetalheEvento({ route }) {
-
   const { id, nome, data, local, descricao, vagas_disponiveis, total_vagas } = route.params;
   const theme = useTheme();
   const navigation = useNavigation();
-  const { perfil, usuario } = useUsuario(); /*para realizar inscrição no projeto*/ 
-  
+  const { perfil } = useUsuario();
 
   const [inscrito, setInscrito] = useState(false);
+  const [comentarioVisivel, setComentarioVisivel] = useState(false);
+  const [comentarioTexto, setComentarioTexto] = useState('');
+  const [mostrarImagens, setMostrarImagens] = useState(false);
 
-  //verificar inscrição
   useEffect(() => {
     async function checarInscricao() {
       const {
         data: { user },
-        error: userError
+        error: userError,
       } = await supabase.auth.getUser();
-  
-      if (userError || !user) { /* verificando se tem algum usuário logado */
+
+      if (userError || !user) {
         console.error('Erro ao obter usuário:', userError);
         return;
       }
-  
-      const { data: allRows, error: allError } = await supabase /*pegando todos os eventos no bando de dados*/
-        .from('inscricoes')
-        .select('*');
-    
-      const statusConfirmada = 'confirmada'; 
 
       const { data: rows, error } = await supabase
         .from('inscricoes')
         .select('*')
         .eq('evento_id', id)
         .eq('usuario_id', user.id)
-        .eq('status',statusConfirmada);
-    
+        .eq('status', 'confirmada');
+
       if (error) {
         console.error('Erro ao verificar inscrição:', error);
         return;
       }
-  
+
       setInscrito(rows.length > 0);
     }
-  
+
     checarInscricao();
-    
   }, [id]);
 
   const agora = new Date();
   const dataEvento = new Date(data);
 
-  // define badge
   let badgeText, badgeColor;
   if (inscrito) {
     badgeText = 'Você já está inscrito';
@@ -71,83 +80,36 @@ export default function DetalheEvento({ route }) {
     badgeColor = theme.colors.secondary;
   }
 
-  // mostra botão apenas se não inscrito e evento futuro
   const podeInscrever = !inscrito && agora <= dataEvento;
 
+  const abrirModalComentario = () => setComentarioVisivel(true);
+  const fecharModalComentario = () => {
+    setComentarioTexto('');
+    setComentarioVisivel(false);
+  };
 
- const cancelarInscricao = async () => {
-  const {
-    data: { user },
-    error: userError
-  } = await supabase.auth.getUser();
+  const enviar = async () => {
+    try {
+      await enviarComentario({ eventoId: id, usuarioId: perfil.id, texto: comentarioTexto });
+      alert('Comentário enviado!');
+      fecharModalComentario();
+    } catch (e) {
+      alert(e.message);
+    }
+  };
 
-  if (userError || !user) {
-    console.error('Erro ao obter usuário:', userError);
-    return;
-  }
+  const curtir = async () => {
+    try {
+      await curtirEvento(id);
+      alert('Você curtiu o evento!');
+    } catch (e) {
+      alert(e.message);
+    }
+  };
 
-  const statusAtivo = 'confirmada';
-
-  // 1. Buscar inscrição
-  const { data: inscricao, error: buscaErro } = await supabase
-    .from('inscricoes')
-    .select('*')
-    .eq('evento_id', id)
-    .eq('usuario_id', user.id)
-    .eq('status', statusAtivo)
-    .maybeSingle();
-
-  if (buscaErro) {
-    console.error('Erro ao buscar inscrição:', buscaErro.message);
-    return;
-  }
-
-  if (!inscricao) {
-    console.warn('Nenhuma inscrição encontrada para cancelar.');
-    return;
-  }
-
-  console.log('Inscrição encontrada:', inscricao);
-
-  // 2. Excluir inscrição
-  const { error: deleteErro } = await supabase
-    .from('inscricoes')
-    .delete()
-    .eq('id', inscricao.id);
-
-  if (deleteErro) {
-    console.error('Erro ao excluir inscrição:', deleteErro.message);
-    return;
-  }
-
-  setInscrito(false);
-
-  // 3. Buscar evento
-  const { data: evento, error: eventoErro } = await supabase
-    .from('eventos')
-    .select('vagas_disponiveis')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (eventoErro || !evento) {
-    console.error('Erro ao buscar evento:', eventoErro);
-    return;
-  }
-
-  // 4. Atualizar vagas_disponiveis (+1)
-  const { error: atualizaErro } = await supabase
-    .from('eventos')
-    .update({ vagas_disponiveis: evento.vagas_disponiveis + 1 })
-    .eq('id', id);
-
-  if (atualizaErro) {
-    alert('Inscrição cancelada, mas houve erro ao atualizar vagas.');
-    console.log('Erro ao atualizar vagas_disponiveis:', atualizaErro);
-  } else {
-    alert('Inscrição cancelada com sucesso!');
-  }
-};
-
+  const verImagens = () => {
+    setMostrarImagens(!mostrarImagens);
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -169,88 +131,62 @@ export default function DetalheEvento({ route }) {
           <Divider style={styles.divisor} />
           <Text variant="titleSmall" style={styles.subtitulo}>Descrição:</Text>
           <Text style={styles.descricao}>{descricao}</Text>
+
+          <Divider style={styles.divisor} />
+
+          <View style={styles.info}>
+            <IconButton icon="comment-processing-outline" size={24} onPress={abrirModalComentario} />
+            <Text variant="bodyMedium" style={styles.infoText}>0</Text>
+
+            <IconButton icon="cards-heart-outline" size={24} onPress={curtir} />
+            <Text variant="bodyMedium" style={styles.infoText}>12</Text>
+
+            <IconButton icon="image-outline" size={24} onPress={verImagens} />
+          </View>
+
+          {mostrarImagens && (
+            <View style={{ marginTop: 10 }}>
+              <Text variant="titleMedium" style={{ marginBottom: 8 }}>Imagens do Evento</Text>
+              <GaleriaImagensEvento eventoId={id} />
+            </View>
+          )}
         </Card.Content>
 
         {podeInscrever && (
-  <Button
-    mode="contained"
-    onPress={async () => {
-  // 1. Buscar evento
-  const { data: evento, error: eventoErro } = await supabase
-    .from('eventos')
-    .select('vagas_disponiveis, total_vagas')
-    .eq('id', id)
-    .maybeSingle();
-
-  if (eventoErro) {
-    alert('Erro ao verificar evento.');
-    console.log('Erro ao buscar evento:', eventoErro);
-    return;
-  }
-
-  if (!evento) {
-    alert('Evento não encontrado.');
-    return;
-  }
-
-  // 3. Verificar se ainda há vagas
-  if (evento.vagas_disponiveis <= 0) {
-    alert('Não é possível se inscrever. Vagas esgotadas.');
-    return;
-  }
-
-  // 4. Inserir inscrição
-  const { error: inscErro } = await supabase.from('inscricoes').insert([
-    {
-      usuario_id: perfil.id,
-      evento_id: id,
-      status: 'confirmada',
-    },
-  ]);
-
-  if (inscErro) {
-    alert('Erro', `Erro ao se inscrever no evento: ${inscErro.message}`);
-    console.log('Erro ao inscrever:', inscErro);
-    return;
-  }
-
-
-  // 5. Decrementar total_vagas em 1
-  const { error: atualizaErro } = await supabase
-    .from('eventos')
-    .update({ vagas_disponiveis: evento.vagas_disponiveis - 1 })
-    .eq('id', id);
-
-
-  if (atualizaErro) {
-    alert('Inscrição feita, mas houve erro ao atualizar total de vagas.');
-    console.log('Erro ao atualizar total_vagas:', atualizaErro);
-  } else {
-    alert('Sucesso', 'Inscrição realizada com sucesso!');
-  }
-
-  navigation.navigate('Eventos');
-}}
-
-
-
-    style={styles.botaoInscrever}
-  >
-    Quero me inscrever
-  </Button>
-)}
+          <Button
+            mode="contained"
+            onPress={async () => {
+              try {
+                await inscreverUsuario({ eventoId: id, perfil });
+                alert('Inscrição realizada com sucesso!');
+                navigation.navigate('Eventos');
+              } catch (e) {
+                alert(e.message);
+              }
+            }}
+            style={styles.botaoInscrever}
+          >
+            Quero me inscrever
+          </Button>
+        )}
 
         {inscrito && (
-  <Button
-    onPress={cancelarInscricao}
-    style={{ marginTop: 10 }}
-    mode="outlined"
-  >
-    Cancelar inscrição
-  </Button>
-)}
-
-
+          <Button
+            onPress={async () => {
+              try {
+                await cancelarInscricao(id);
+                setInscrito(false);
+                alert('Inscrição cancelada com sucesso!');
+              } catch (e) {
+                alert(e.message);
+              }
+            }}
+            style={{ marginTop: 10 }}
+            mode="outlined"
+          >
+            Cancelar inscrição
+          </Button>
+        )}
       </Card>
 
       <Button
@@ -260,6 +196,21 @@ export default function DetalheEvento({ route }) {
       >
         Voltar
       </Button>
+
+      <Portal>
+        <Modal visible={comentarioVisivel} onDismiss={fecharModalComentario} contentContainerStyle={styles.modal}>
+          <Text variant="titleMedium">Comentar evento</Text>
+          <TextInput
+            label="Digite seu comentário"
+            value={comentarioTexto}
+            onChangeText={setComentarioTexto}
+            multiline
+            mode="outlined"
+            style={{ marginVertical: 10 }}
+          />
+          <Button mode="contained" onPress={enviar}>Enviar comentário</Button>
+        </Modal>
+      </Portal>
     </ScrollView>
   );
 }
@@ -299,5 +250,20 @@ const styles = StyleSheet.create({
   },
   botaoVoltar: {
     marginTop: 10,
+  },
+  info: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    justifyContent: 'space-around',
+  },
+  infoText: {
+    marginHorizontal: 4,
+  },
+  modal: {
+    backgroundColor: 'white',
+    padding: 20,
+    margin: 20,
+    borderRadius: 8,
   },
 });

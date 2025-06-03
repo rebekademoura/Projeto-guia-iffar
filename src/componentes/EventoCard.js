@@ -7,28 +7,7 @@ import { format } from 'date-fns';
 import { supabase } from '../config/supabase';
 
 
-
 export default function EventoCard({id,nome,data,local,onPress }) {
- useEffect(() => {
-   const canal = supabase
-     .channel('realtime:eventos')
-     .on('postgres_changes', {
-       event: '*',
-       schema: 'public',
-       table: 'eventos',
-     }, (payload) => {
-       console.log('Atualização recebida:', payload);
-       // Atualize o estado aqui
-     })
-     .subscribe();
- 
-   return () => {
-     supabase.removeChannel(canal);
-   };
- }, []);
-
-
-
 
   const theme = useTheme(); //tema de cores
   const [inscrito, setInscrito] = useState(false); //pega user
@@ -113,6 +92,20 @@ export default function EventoCard({id,nome,data,local,onPress }) {
           <MaterialCommunityIcons name="map-marker-outline" size={16} />
           <Text variant="bodyMedium" style={styles.infoText}>
             Local: {local}
+          </Text>
+        </View>
+        <View style={styles.info}>
+          <MaterialCommunityIcons name="comment-processing-outline" size={20} />
+          <Text variant="bodyMedium" style={styles.infoText}>
+            0
+          </Text>
+          <MaterialCommunityIcons name="cards-heart-outline" size={20} />
+          <Text variant="bodyMedium" style={styles.infoText}>
+            12
+          </Text>
+          <MaterialCommunityIcons name="image-outline" size={20} />
+          <Text variant="bodyMedium" style={styles.infoText}>
+            2
           </Text>
         </View>
 
