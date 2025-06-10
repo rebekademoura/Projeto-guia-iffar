@@ -19,6 +19,7 @@ import Login from './src/screens/Login';
 import Cadastro from './src/screens/Cadastro';
 import NovoEvento from './src/screens/NovoEvento';
 import NovoCurso from './src/screens/NovoCurso';
+import Perfil from './src/screens/Perfil';
 
 //importação do tema
 import { tema } from './src/config/tema'; 
@@ -52,6 +53,12 @@ export default function App() {
               component={Eventos}
               options={{
                 tabBarIcon: ({ color, size }) => (<MaterialCommunityIcons name="calendar-month-outline" size={size} color={color} />),}}
+            />
+            <Tab.Screen
+              name="Perfil"
+              component={Perfil}
+              options={{
+                tabBarIcon: ({ color, size }) => (<MaterialCommunityIcons name="account-circle-outline" size={size} color={color} />),}}
             />
 
             <Tab.Screen

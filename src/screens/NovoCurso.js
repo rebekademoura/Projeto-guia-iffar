@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Alert, View, Platform } from 'react-native';
+import { ScrollView, StyleSheet, Alert, View } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
 import { supabase } from '../config/supabase';
 import { useUsuario } from '../contexto/UsuarioContexto';
@@ -18,40 +18,52 @@ export default function NovoCurso() {
   const [duracao, setDuracao] = useState('');
   const [descricao, setDescricao] = useState('');
   const [arquivoUrl, setArquivoUrl] = useState(null);
+  const [enviando, setEnviando] = useState(false);
+  const [uploadOK, setUploadOK] = useState(false);
 
   const selecionarArquivo = async () => {
-  try {
-    const resultado = await DocumentPicker.getDocumentAsync({
-      type: 'application/pdf',
-    });
+    try {
+      const resultado = await DocumentPicker.getDocumentAsync({
+        type: 'application/pdf',
+      });
 
-    if (resultado.assets && resultado.assets.length > 0) {
-      const { uri, name } = resultado.assets[0];
-      const resposta = await fetch(uri);
-      const blob = await resposta.blob();
-      const caminho = `cursos/${Date.now()}_${name}`;
+      if (resultado.assets && resultado.assets.length > 0) {
+        setEnviando(true);
+        const { uri, name } = resultado.assets[0];
+        const resposta = await fetch(uri);
+        const blob = await resposta.blob();
+        const caminho = `cursos/${Date.now()}_${name}`;
 
-      const { data, error } = await supabase.storage.from('curso').upload(caminho, blob); // <- corrigido
+        const { error } = await supabase.storage.from('curso').upload(caminho, blob);
 
-      if (error) {
-        Alert.alert('Erro', 'Falha ao enviar o PDF.');
-        console.error('Erro no upload:', error);
-      } else {
-        const { data: { publicUrl } } = supabase.storage.from('curso').getPublicUrl(caminho); // <- corrigido
-        setArquivoUrl(publicUrl);
-        Alert.alert('Sucesso', 'Arquivo PDF enviado com sucesso!');
+        if (error) {
+          Alert.alert('Erro', 'Falha ao enviar o PDF.');
+          console.error('Erro no upload:', error);
+          setUploadOK(false);
+        } else {
+          const { data: { publicUrl } } = supabase.storage.from('curso').getPublicUrl(caminho);
+          setArquivoUrl(publicUrl);
+          setUploadOK(true);
+          Alert.alert('Sucesso', 'Arquivo PDF enviado com sucesso!');
+        }
       }
+    } catch (error) {
+      console.error('Erro ao selecionar/enviar arquivo:', error);
+      Alert.alert('Erro', 'Ocorreu um erro ao selecionar o arquivo.');
+      setUploadOK(false);
+    } finally {
+      setEnviando(false);
     }
-  } catch (error) {
-    console.error('Erro ao selecionar arquivo:', error);
-    Alert.alert('Erro', 'Ocorreu um erro ao selecionar o arquivo.');
-  }
-};
-
+  };
 
   const salvarCurso = async () => {
     if (!nome || !modalidade || !nivel || !turno) {
       Alert.alert('Campos obrigatórios', 'Preencha todos os campos principais.');
+      return;
+    }
+
+    if (!uploadOK || !arquivoUrl) {
+      Alert.alert('Arquivo não enviado', 'Você precisa enviar o PDF antes de cadastrar.');
       return;
     }
 
@@ -64,14 +76,15 @@ export default function NovoCurso() {
         unidade,
         duracao,
         descricao,
-        arquivo_url: arquivoUrl, // ✅ agora está corretamente separado por vírgula
+        arquivo_url: arquivoUrl,
       },
     ]);
 
     if (error) {
       Alert.alert('Erro ao salvar', error.message);
+      console.error('Erro ao salvar curso:', error);
     } else {
-      Alert.alert('Sucesso', 'Curso cadastrado!');
+      Alert.alert('Sucesso', 'Curso cadastrado com sucesso!');
       navigation.navigate('Cursos');
     }
   };
@@ -97,24 +110,24 @@ export default function NovoCurso() {
       <TextInput label="Duração" value={duracao} onChangeText={setDuracao} style={styles.input} />
       <TextInput label="Descrição" value={descricao} onChangeText={setDescricao} multiline style={styles.input} />
 
-      <Button mode="outlined" onPress={selecionarArquivo}>
-        Selecionar PDF do Curso
+      <Button mode="outlined" onPress={selecionarArquivo} loading={enviando} disabled={enviando}>
+        {enviando ? 'Enviando...' : 'Selecionar e Enviar PDF'}
       </Button>
 
-      {arquivoUrl && <Text style={{ marginTop: 8 }}>✅ Arquivo enviado com sucesso!</Text>}
+      {uploadOK && <Text style={{ marginTop: 8 }}>✅ PDF enviado com sucesso!</Text>}
 
       <Button mode="contained" onPress={salvarCurso} style={{ marginTop: 20 }}>
-        Salvar Curso
+        Cadastrar Curso
       </Button>
-      <Button
-  icon="arrow-left"
-  mode="text"
-  onPress={() => navigation.navigate('Cursos')}
-  style={{ marginBottom: 8 }}
->
-  Voltar
-</Button>
 
+      <Button
+        icon="arrow-left"
+        mode="text"
+        onPress={() => navigation.navigate('Cursos')}
+        style={{ marginBottom: 8, marginTop: 10 }}
+      >
+        Voltar
+      </Button>
     </ScrollView>
   );
 }

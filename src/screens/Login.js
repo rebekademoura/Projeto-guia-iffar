@@ -38,10 +38,10 @@ export default function Login() {
     if (user) { 
       // buscar dados complementares da tabela usuarios
       const { data: perfilUsuario, error: erroPerfil } = await supabase
-        .from('usuarios')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+  .from('usuarios')
+  .select('id, nome, tipo, foto_usuario') // liste só os campos realmente existentes
+  .eq('id', user.id)
+  .single();
 
       if (erroPerfil) {
         Alert.alert('Erro', 'Não foi possível buscar o perfil do usuário.');

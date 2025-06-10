@@ -10,6 +10,7 @@ export const UsuarioProvider = ({children}) => {
     const [Usuario, setUsuario] = useState(null);
     const [perfil, setPerfil] = useState(null);
     const [eventosInscritos, setEventosInscritos] = useState([]);
+    
 
     const [carregando, setCarregando] = useState(true);
 

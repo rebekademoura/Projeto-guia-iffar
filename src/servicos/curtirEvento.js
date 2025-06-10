@@ -1,22 +1,16 @@
-import { supabase } from '../config/supabase';
+const curtirEvento = async (eventoId) => {
+  try {
+    const { error } = await supabase
+      .from('eventos')
+      .update({ qtd_curtidas: supabase.rpc('incrementar_curtida', { evento_id_input: eventoId }) })
+      .eq('id', eventoId);
 
-export async function curtirEvento(eventoId) {
-  const { data: evento, error } = await supabase
-    .from('eventos')
-    .select('curtidas')
-    .eq('id', eventoId)
-    .maybeSingle();
-
-  if (error || !evento) {
-    throw new Error('Erro ao buscar evento');
+    if (error) {
+      Alert.alert('Erro ao curtir evento', error.message);
+    } else {
+      carregarEventosInscritos(); // recarrega lista com novas curtidas
+    }
+  } catch (e) {
+    Alert.alert('Erro inesperado', e.message);
   }
-
-  const { error: updateError } = await supabase
-    .from('eventos')
-    .update({ curtidas: (evento.curtidas || 0) + 1 })
-    .eq('id', eventoId);
-
-  if (updateError) {
-    throw new Error('Erro ao curtir evento');
-  }
-}
+};

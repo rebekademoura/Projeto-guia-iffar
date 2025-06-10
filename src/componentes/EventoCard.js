@@ -1,85 +1,70 @@
-import React from 'react';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Card, Text, Badge, Button, useTheme } from 'react-native-paper';
+import { Card, Text, Badge, useTheme } from 'react-native-paper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import { supabase } from '../config/supabase';
 
+export default function EventoCard({ id, nome, data, local, onPress }) {
+  const theme = useTheme();
 
-export default function EventoCard({id,nome,data,local,onPress }) {
+  const [inscrito, setInscrito] = useState(false);
+  const [qtdComentarios, setQtdComentarios] = useState(0);
+  const [qtdCurtidas, setQtdCurtidas] = useState(0);
+  const [qtdImagens, setQtdImagens] = useState(0);
 
-  const theme = useTheme(); //tema de cores
-  const [inscrito, setInscrito] = useState(false); //pega user
-
-  // Verifica se o usuário já está inscrito no evento
   useEffect(() => {
-  async function checarInscricao() {
-    const {
-      data: { user },
-      error: userError
-    } = await supabase.auth.getUser();
+    checarInscricao();
+    carregarContadores();
+  }, [id]);
 
-    console.log('Usuário retornado pelo Supabase:', user);
-    console.log('ID do evento recebido no EventoCard:', id);
+  const checarInscricao = async () => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) return;
 
-    if (userError || !user) { //verificando se tem usuario logado
-      console.error('Erro ao obter usuário:', userError);
-      return;
-    }
-      const statusConfirmada = 'confirmada'; 
-
-    const { data: rows, error } = await supabase //pegando no DB todos os eventos
+    const { data, error } = await supabase
       .from('inscricoes')
       .select('*')
       .eq('evento_id', id)
       .eq('usuario_id', user.id)
-      .eq('status',statusConfirmada);
+      .eq('status', 'confirmada');
 
+    if (!error) setInscrito(data.length > 0);
+  };
 
-    if (error) { //nao encontrou nada
-      console.error('Erro ao verificar inscrição:', error);
-      return;
-    }
+  const carregarContadores = async () => {
+    const [{ count: comentarios }, { count: curtidas }, { count: imagens }] = await Promise.all([
+      supabase.from('comentario').select('*', { count: 'exact', head: true }).eq('evento_id', id),
+      supabase.from('curtidas').select('*', { count: 'exact', head: true }).eq('evento_id', id),
+      supabase.from('imagens_evento').select('*', { count: 'exact', head: true }).eq('evento_id', id),
+    ]);
 
-    setInscrito(rows.length > 0); //se tiver mais de uma linha OK com user = evento_id 
-  }
+    setQtdComentarios(comentarios || 0);
+    setQtdCurtidas(curtidas || 0);
+    setQtdImagens(imagens || 0);
+  };
 
-  checarInscricao(); //retorna os dados
+  const agora = new Date();
+  const dataEvento = new Date(data);
 
-  
-}, [id]);
+  const textoBadge = inscrito
+    ? 'Você já está inscrito'
+    : agora > dataEvento
+    ? 'Inscrições encerradas'
+    : 'Inscrições abertas';
 
-
-  const agora = new Date(); //data atual
-  const dataEvento = new Date(data); //data que vai acontecer o evento
-
-  // Define texto e cor do badge
-  let textoBadge, corBadge;
-  if (inscrito) { //se resultado > 0 = tem inscrito
-    textoBadge = 'Você já está inscrito';
-    corBadge = theme.colors.primary;
-  } else if (agora > dataEvento) { //senão data de hoje maior que a data evento = inscrições encerradas
-    textoBadge = 'Inscrições encerradas';
-    corBadge = theme.colors.disabled;
-  } else { //senao = inscrições abertas
-    textoBadge = 'Inscrições abertas';
-    corBadge = theme.colors.secondary;
-  }
-
-  const podeInscrever = !inscrito && agora <= dataEvento; //se usuário não está inscrito, nem data < evento = inscrição liberada
-
+  const corBadge = inscrito
+    ? theme.colors.primary
+    : agora > dataEvento
+    ? theme.colors.disabled
+    : theme.colors.secondary;
 
   return (
     <Card style={styles.card} mode="outlined" onPress={onPress}>
       <Card.Content>
         <View style={styles.header}>
           <Text variant="titleMedium" style={styles.nome}>{nome}</Text>
-          {textoBadge !== '' && (
-            <Badge style={[styles.badge, { backgroundColor: corBadge }]}>
-              {textoBadge}
-            </Badge>
-          )}
+          <Badge style={[styles.badge, { backgroundColor: corBadge }]}>{textoBadge}</Badge>
         </View>
 
         <View style={styles.info}>
@@ -88,27 +73,22 @@ export default function EventoCard({id,nome,data,local,onPress }) {
             Data: {format(dataEvento, 'dd/MM/yyyy')}
           </Text>
         </View>
+
         <View style={styles.info}>
           <MaterialCommunityIcons name="map-marker-outline" size={16} />
           <Text variant="bodyMedium" style={styles.infoText}>
             Local: {local}
           </Text>
         </View>
+
         <View style={styles.info}>
           <MaterialCommunityIcons name="comment-processing-outline" size={20} />
-          <Text variant="bodyMedium" style={styles.infoText}>
-            0
-          </Text>
-          <MaterialCommunityIcons name="cards-heart-outline" size={20} />
-          <Text variant="bodyMedium" style={styles.infoText}>
-            12
-          </Text>
-          <MaterialCommunityIcons name="image-outline" size={20} />
-          <Text variant="bodyMedium" style={styles.infoText}>
-            2
-          </Text>
+          <Text variant="bodyMedium" style={styles.infoText}>{qtdComentarios}</Text>
+          <MaterialCommunityIcons name="cards-heart-outline" size={20} style={{ marginLeft: 16 }} />
+          <Text variant="bodyMedium" style={styles.infoText}>{qtdCurtidas}</Text>
+          <MaterialCommunityIcons name="image-outline" size={20} style={{ marginLeft: 16 }} />
+          <Text variant="bodyMedium" style={styles.infoText}>{qtdImagens}</Text>
         </View>
-
       </Card.Content>
     </Card>
   );
@@ -139,8 +119,5 @@ const styles = StyleSheet.create({
   },
   infoText: {
     marginLeft: 4,
-  },
-  botao: {
-    marginTop: 8,
   },
 });
