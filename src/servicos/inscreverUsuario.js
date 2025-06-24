@@ -1,10 +1,11 @@
 import { supabase } from '../config/supabase';
+import { adicionarAoCalendario } from './AdicionarAoCalendario'; // certifique-se que o nome do arquivo está certo!
 
 export async function inscreverUsuario({ eventoId, perfil }) {
   // Buscar evento
   const { data: evento, error: eventoErro } = await supabase
     .from('eventos')
-    .select('vagas_disponiveis, total_vagas')
+    .select('*')
     .eq('id', eventoId)
     .maybeSingle();
 
@@ -37,6 +38,19 @@ export async function inscreverUsuario({ eventoId, perfil }) {
 
   if (atualizaErro) {
     throw new Error('Inscrição feita, mas erro ao atualizar vagas.');
+  }
+
+  // Adicionar ao calendário usando apenas 'data'
+  try {
+    await adicionarAoCalendario({
+      titulo: evento.nome ?? '',
+      descricao: evento.descricao ?? '',
+      local: evento.local ?? '',
+      inicio: evento.data, // data única, tipo '2025-12-04'
+      fim: evento.data,    // igual ao início, evento de 1 dia
+    });
+  } catch (erroCal) {
+    console.error('Erro ao adicionar ao calendário:', erroCal);
   }
 
   return true;
