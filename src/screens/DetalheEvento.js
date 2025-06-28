@@ -1,8 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { ScrollView, StyleSheet, View, Platform, Linking } from 'react-native';
 import {
-  Text, Card, Badge, Divider, Button, useTheme,
-  TextInput, IconButton,
+  ScrollView,
+  StyleSheet,
+  View,
+  Platform,
+  Image,
+  Alert
+} from 'react-native';
+import {
+  Text,
+  TextInput,
+  Card,
+  Badge,
+  Divider,
+  Button,
+  useTheme,
+  IconButton
 } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
 import { format } from 'date-fns';
@@ -12,13 +25,13 @@ import GaleriaImagensEvento from '../componentes/galeriaImagensEvento';
 import { inscreverUsuario } from '../servicos/inscreverUsuario';
 import { cancelarInscricao } from '../servicos/cancelarinscricao';
 
-/* ─── MapView / Marker carregados somente no mobile ─── */
+/* MapView / Marker só no mobile */
 let MapView = () => null;
 let Marker  = () => null;
 if (Platform.OS !== 'web') {
   const RNMaps = require('react-native-maps');
-  MapView      = RNMaps.default;
-  Marker       = RNMaps.Marker;
+  MapView = RNMaps.default;
+  Marker  = RNMaps.Marker;
 }
 
 export default function DetalheEvento({ route }) {
@@ -32,107 +45,148 @@ export default function DetalheEvento({ route }) {
   const navigation = useNavigation();
   const { perfil } = useUsuario();
 
-  /* -------- estados -------- */
-  const [inscrito, setInscrito]               = useState(false);
+  const [inscrito, setInscrito]                     = useState(false);
   const [mostrarComentarios, setMostrarComentarios] = useState(false);
-  const [mostrarImagens,     setMostrarImagens]     = useState(false);
-  const [comentarioTexto,    setComentarioTexto]    = useState('');
-  const [comentarios,        setComentarios]        = useState([]);
+  const [mostrarImagens, setMostrarImagens]         = useState(false);
+  const [comentarioTexto, setComentarioTexto]       = useState('');
+  const [comentarios, setComentarios]               = useState([]);
   const [curtido, setCurtido]                       = useState(false);
   const [qtdCurtidas, setQtdCurtidas]               = useState(0);
 
-  /* -------- efeitos -------- */
   useEffect(() => {
+    if (!perfil?.id) return;
     carregarInscricao();
     carregarComentarios();
     carregarCurtidas();
-  }, []);
+  }, [perfil?.id, id]);
 
-  /* -------- funções de carga (iguais) -------- */
-  const carregarInscricao = async () => {
-    const { data: user } = await supabase.auth.getUser();
+  async function carregarInscricao() {
+    const userId = perfil.id;
     const { data } = await supabase
       .from('inscricoes')
-      .select('*')
+      .select('id')
       .eq('evento_id', id)
-      .eq('usuario_id', user.user.id)
+      .eq('usuario_id', userId)
       .eq('status', 'confirmada');
     setInscrito((data || []).length > 0);
-  };
+  }
 
-  const carregarComentarios = async () => {
+  async function carregarComentarios() {
     const { data } = await supabase
       .from('comentario')
       .select('id, comentario, usuario:usuarios(nome)')
       .eq('evento_id', id)
       .order('id', { ascending: false });
     setComentarios(data || []);
-  };
+  }
 
-  const enviarComentario = async () => {
+  async function carregarCurtidas() {
+    if (!perfil?.id) return;
+    try {
+      // 1) busca qtd_curtidas direto na tabela eventos
+      const { data: evData, error: evErr } = await supabase
+        .from('eventos')
+        .select('qtd_curtidas')
+        .eq('id', id)
+        .single();
+      if (evErr) throw evErr;
+      setQtdCurtidas(evData.qtd_curtidas);
+
+      // 2) verifica se o usuário já curtiu
+      const userId = perfil.id;
+      const { count, error: cntErr } = await supabase
+        .from('curtidas')
+        .select('id', { count: 'exact', head: true })
+        .eq('evento_id', id)
+        .eq('usuario_id', userId);
+      if (cntErr) throw cntErr;
+
+      setCurtido(count > 0);
+    } catch (err) {
+      console.error('Erro ao carregar curtidas:', err);
+      setQtdCurtidas(0);
+      setCurtido(false);
+    }
+  }
+
+  async function alternarCurtida() {
+    if (!perfil) return;
+    try {
+      if (curtido) {
+        await supabase
+          .from('curtidas')
+          .delete()
+          .match({ evento_id: id, usuario_id: perfil.id });
+        await supabase
+          .from('eventos')
+          .update({ qtd_curtidas: qtdCurtidas - 1 })
+          .eq('id', id);
+      } else {
+        await supabase
+          .from('curtidas')
+          .insert({ evento_id: id, usuario_id: perfil.id });
+        await supabase
+          .from('eventos')
+          .update({ qtd_curtidas: qtdCurtidas + 1 })
+          .eq('id', id);
+      }
+      await carregarCurtidas();
+    } catch (err) {
+      console.error('Erro ao alternar curtida:', err);
+      Alert.alert('Erro', 'Não foi possível atualizar a curtida.');
+    }
+  }
+
+  async function enviarComentario() {
     if (!comentarioTexto.trim()) return;
     const { error } = await supabase
       .from('comentario')
-      .insert({ evento_id: id, usuario_id: perfil.id, comentario: comentarioTexto });
-    if (!error) { setComentarioTexto(''); carregarComentarios(); }
-  };
-
-  const carregarCurtidas = async () => {
-    const { data: ev } = await supabase
-      .from('eventos')
-      .select('qtd_curtidas')
-      .eq('id', id)
-      .single();
-    setQtdCurtidas(ev?.qtd_curtidas || 0);
-
-    const { data } = await supabase
-      .from('curtidas')
-      .select('*')
-      .eq('evento_id', id)
-      .eq('usuario_id', perfil.id)
-      .maybeSingle();
-    setCurtido(!!data);
-  };
-
-  const alternarCurtida = async () => {
-    if (curtido) {
-      await supabase.from('curtidas').delete().match({ evento_id: id, usuario_id: perfil.id });
-      await supabase.from('eventos').update({ qtd_curtidas: qtdCurtidas - 1 }).eq('id', id);
-      setQtdCurtidas(qtdCurtidas - 1);
-    } else {
-      await supabase.from('curtidas').insert({ evento_id: id, usuario_id: perfil.id });
-      await supabase.from('eventos').update({ qtd_curtidas: qtdCurtidas + 1 }).eq('id', id);
-      setQtdCurtidas(qtdCurtidas + 1);
+      .insert({
+        evento_id: id,
+        usuario_id: perfil.id,
+        comentario: comentarioTexto
+      });
+    if (!error) {
+      setComentarioTexto('');
+      carregarComentarios();
     }
-    setCurtido(!curtido);
-  };
+  }
 
-  /* -------- badge -------- */
   const agora      = new Date();
   const dataEvento = new Date(data);
-
   const badgeText  = inscrito
     ? 'Você já está inscrito'
     : agora > dataEvento
-    ? 'Inscrições encerradas'
-    : 'Inscrições abertas';
-
+      ? 'Inscrições encerradas'
+      : 'Inscrições abertas';
   const badgeColor = inscrito
     ? theme.colors.primary
     : agora > dataEvento
-    ? theme.colors.disabled
-    : theme.colors.secondary;
+      ? theme.colors.disabled
+      : theme.colors.secondary;
 
-  /* -------- render -------- */
+  if (!perfil || perfil.tipo !== 'admin') {
+    return (
+      <ScrollView contentContainerStyle={styles.container}>
+        <Text variant="titleLarge" style={{ marginBottom: 16 }}>
+          Usuário sem permissão
+        </Text>
+        <Button mode="contained" onPress={() => navigation.goBack()}>
+          Voltar
+        </Button>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Card mode="outlined" style={styles.card}>
         <Card.Content>
-
-          {/* cabeçalho */}
           <View style={styles.header}>
             <Text variant="titleLarge">{nome}</Text>
-            <Badge style={[styles.badge, { backgroundColor: badgeColor }]}>{badgeText}</Badge>
+            <Badge style={[styles.badge, { backgroundColor: badgeColor }]}>
+              {badgeText}
+            </Badge>
           </View>
 
           <Divider style={styles.divisor} />
@@ -145,7 +199,6 @@ export default function DetalheEvento({ route }) {
           <Text variant="titleSmall" style={styles.subtitulo}>Descrição:</Text>
           <Text style={styles.descricao}>{descricao}</Text>
 
-          {/* mapa ou botão */}
           {latitude && longitude && (
             <View style={{ marginTop: 12 }}>
               {Platform.OS === 'web' ? (
@@ -180,9 +233,11 @@ export default function DetalheEvento({ route }) {
 
           <Divider style={styles.divisor} />
 
-          {/* contadores */}
           <View style={styles.info}>
-            <IconButton icon="comment-outline" onPress={() => setMostrarComentarios(!mostrarComentarios)} />
+            <IconButton
+              icon="comment-outline"
+              onPress={() => setMostrarComentarios(!mostrarComentarios)}
+            />
             <Text>{comentarios.length}</Text>
 
             <IconButton
@@ -192,13 +247,17 @@ export default function DetalheEvento({ route }) {
             />
             <Text>{qtdCurtidas}</Text>
 
-            <IconButton icon="image-outline" onPress={() => setMostrarImagens(!mostrarImagens)} />
+            <IconButton
+              icon="image-outline"
+              onPress={() => setMostrarImagens(!mostrarImagens)}
+            />
           </View>
 
-          {/* galeria e comentários (sem mudanças) */}
           {mostrarImagens && (
             <View style={{ marginTop: 10 }}>
-              <Text variant="titleMedium" style={{ marginBottom: 8 }}>Imagens do Evento</Text>
+              <Text variant="titleMedium" style={{ marginBottom: 8 }}>
+                Imagens do Evento
+              </Text>
               <GaleriaImagensEvento eventoId={id} />
             </View>
           )}
@@ -227,11 +286,13 @@ export default function DetalheEvento({ route }) {
           )}
         </Card.Content>
 
-        {/* inscrição / cancelamento */}
-        {agora <= dataEvento && !inscrito && (
+        {!inscrito && agora <= dataEvento && (
           <Button
             mode="contained"
-            onPress={async () => { await inscreverUsuario({ eventoId: id, perfil }); setInscrito(true); }}
+            onPress={async () => {
+              await inscreverUsuario({ eventoId: id, perfil });
+              setInscrito(true);
+            }}
             style={styles.botaoInscrever}
           >
             Quero me inscrever
@@ -240,7 +301,10 @@ export default function DetalheEvento({ route }) {
         {inscrito && (
           <Button
             mode="outlined"
-            onPress={async () => { await cancelarInscricao(id); setInscrito(false); }}
+            onPress={async () => {
+              await cancelarInscricao(id);
+              setInscrito(false);
+            }}
             style={{ marginTop: 10 }}
           >
             Cancelar inscrição
@@ -248,7 +312,11 @@ export default function DetalheEvento({ route }) {
         )}
       </Card>
 
-      <Button mode="outlined" onPress={() => navigation.navigate('Eventos')} style={styles.botaoVoltar}>
+      <Button
+        mode="outlined"
+        onPress={() => navigation.navigate('Eventos')}
+        style={styles.botaoVoltar}
+      >
         Voltar
       </Button>
     </ScrollView>
@@ -256,14 +324,14 @@ export default function DetalheEvento({ route }) {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16 },
-  card: { marginBottom: 16 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  badge: { color: '#fff', paddingHorizontal: 10, fontSize: 12 },
-  divisor: { marginVertical: 12 },
-  subtitulo: { marginBottom: 4 },
-  descricao: { marginTop: 8, lineHeight: 20 },
-  botaoInscrever: { marginTop: 10 },
-  botaoVoltar: { marginTop: 10 },
-  info: { flexDirection: 'row', alignItems: 'center', marginBottom: 8, justifyContent: 'space-around' },
+  container:       { padding: 16 },
+  card:            { marginBottom: 16 },
+  header:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  badge:           { color: '#fff', paddingHorizontal: 10, fontSize: 12 },
+  divisor:         { marginVertical: 12 },
+  subtitulo:       { marginBottom: 4 },
+  descricao:       { marginTop: 8, lineHeight: 20 },
+  botaoInscrever:  { marginTop: 10 },
+  botaoVoltar:     { marginTop: 10 },
+  info:            { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', marginBottom: 8 },
 });

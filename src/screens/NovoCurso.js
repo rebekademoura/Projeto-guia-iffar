@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, Alert, View } from 'react-native';
+import { ScrollView, StyleSheet, Alert, View, Linking } from 'react-native';
 import { TextInput, Button, Text } from 'react-native-paper';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
+import { Buffer } from 'buffer'; // npm install buffer
 import { supabase } from '../config/supabase';
 import { useUsuario } from '../contexto/UsuarioContexto';
 import { useNavigation } from '@react-navigation/native';
-import * as DocumentPicker from 'expo-document-picker';
 
 export default function NovoCurso() {
   const { perfil } = useUsuario();
   const navigation = useNavigation();
 
+  // estados do formulário
   const [nome, setNome] = useState('');
   const [modalidade, setModalidade] = useState('');
   const [nivel, setNivel] = useState('');
@@ -17,75 +20,89 @@ export default function NovoCurso() {
   const [unidade, setUnidade] = useState('');
   const [duracao, setDuracao] = useState('');
   const [descricao, setDescricao] = useState('');
-  const [arquivoUrl, setArquivoUrl] = useState(null);
+
+  // estados do arquivo
+  const [fileUri, setFileUri] = useState('');
+  const [fileName, setFileName] = useState('');
+
+  // estado geral de envio
   const [enviando, setEnviando] = useState(false);
-  const [uploadOK, setUploadOK] = useState(false);
 
+  // só seleciona, sem upload
   const selecionarArquivo = async () => {
-    try {
-      const resultado = await DocumentPicker.getDocumentAsync({
-        type: 'application/pdf',
-      });
+    const resultado = await DocumentPicker.getDocumentAsync({ type: 'application/pdf' });
+    if (resultado.canceled) return;
 
-      if (resultado.assets && resultado.assets.length > 0) {
-        setEnviando(true);
-        const { uri, name } = resultado.assets[0];
-        const resposta = await fetch(uri);
-        const blob = await resposta.blob();
-        const caminho = `cursos/${Date.now()}_${name}`;
-
-        const { error } = await supabase.storage.from('curso').upload(caminho, blob);
-
-        if (error) {
-          Alert.alert('Erro', 'Falha ao enviar o PDF.');
-          console.error('Erro no upload:', error);
-          setUploadOK(false);
-        } else {
-          const { data: { publicUrl } } = supabase.storage.from('curso').getPublicUrl(caminho);
-          setArquivoUrl(publicUrl);
-          setUploadOK(true);
-          Alert.alert('Sucesso', 'Arquivo PDF enviado com sucesso!');
-        }
-      }
-    } catch (error) {
-      console.error('Erro ao selecionar/enviar arquivo:', error);
-      Alert.alert('Erro', 'Ocorreu um erro ao selecionar o arquivo.');
-      setUploadOK(false);
-    } finally {
-      setEnviando(false);
-    }
+    const { uri, name } = resultado.assets[0];
+    setFileUri(uri);
+    setFileName(name);
   };
 
+  // faz upload e insert juntos
   const salvarCurso = async () => {
     if (!nome || !modalidade || !nivel || !turno) {
-      Alert.alert('Campos obrigatórios', 'Preencha todos os campos principais.');
-      return;
+      return Alert.alert('Campos obrigatórios', 'Preencha os campos principais.');
+    }
+    if (!fileUri) {
+      return Alert.alert('Arquivo não selecionado', 'Selecione um PDF antes de cadastrar.');
     }
 
-    if (!uploadOK || !arquivoUrl) {
-      Alert.alert('Arquivo não enviado', 'Você precisa enviar o PDF antes de cadastrar.');
-      return;
-    }
+    setEnviando(true);
 
-    const { error } = await supabase.from('cursos').insert([
-      {
-        nome,
-        modalidade,
-        nivel,
-        turno,
-        unidade,
-        duracao,
-        descricao,
-        arquivo_url: arquivoUrl,
-      },
-    ]);
+    try {
+      // ler e converter
+      const b64 = await FileSystem.readAsStringAsync(fileUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+      const buffer = Buffer.from(b64, 'base64');
 
-    if (error) {
-      Alert.alert('Erro ao salvar', error.message);
-      console.error('Erro ao salvar curso:', error);
-    } else {
+      // upload
+      const bucket = 'curso';
+      const path = `${Date.now()}_${fileName}`;
+      const { error: uploadError } = await supabase
+        .storage
+        .from(bucket)
+        .upload(path, buffer, {
+          contentType: 'application/pdf',
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) throw new Error(uploadError.message);
+
+      // obter publicUrl
+      const { data, error: urlError } = supabase
+        .storage
+        .from(bucket)
+        .getPublicUrl(path);
+
+      if (urlError || !data?.publicUrl) {
+        throw new Error(urlError?.message ?? 'Não gerou publicUrl');
+      }
+      const publicUrl = data.publicUrl;
+
+      // insert no banco
+      const { error: insertError } = await supabase
+        .from('cursos')
+        .insert([{
+          nome,
+          modalidade,
+          nivel,
+          turno,
+          unidade,
+          duracao,
+          descricao,
+          arquivo_url: publicUrl,
+        }]);
+
+      if (insertError) throw new Error(insertError.message);
+
       Alert.alert('Sucesso', 'Curso cadastrado com sucesso!');
       navigation.navigate('Cursos');
+    } catch (err) {
+      Alert.alert('Erro', err.message || 'Falha ao cadastrar curso.');
+    } finally {
+      setEnviando(false);
     }
   };
 
@@ -93,7 +110,7 @@ export default function NovoCurso() {
     return (
       <View style={styles.bloqueado}>
         <Text variant="titleLarge">⛔ Acesso restrito</Text>
-        <Text>Esta funcionalidade é exclusiva para administradores.</Text>
+        <Text>Esta área é só para administradores.</Text>
       </View>
     );
   }
@@ -108,15 +125,30 @@ export default function NovoCurso() {
       <TextInput label="Turno" value={turno} onChangeText={setTurno} style={styles.input} />
       <TextInput label="Unidade" value={unidade} onChangeText={setUnidade} style={styles.input} />
       <TextInput label="Duração" value={duracao} onChangeText={setDuracao} style={styles.input} />
-      <TextInput label="Descrição" value={descricao} onChangeText={setDescricao} multiline style={styles.input} />
+      <TextInput
+        label="Descrição"
+        value={descricao}
+        onChangeText={setDescricao}
+        multiline
+        style={styles.input}
+      />
 
-      <Button mode="outlined" onPress={selecionarArquivo} loading={enviando} disabled={enviando}>
-        {enviando ? 'Enviando...' : 'Selecionar e Enviar PDF'}
+      <Button
+        mode="outlined"
+        onPress={selecionarArquivo}
+        disabled={enviando}
+        style={{ marginBottom: 8 }}
+      >
+        Selecionar PDF
       </Button>
 
-      {uploadOK && <Text style={{ marginTop: 8 }}>✅ PDF enviado com sucesso!</Text>}
+      {fileName ? <Text style={styles.fileName}>Arquivo selecionado: {fileName}</Text> : null}
 
-      <Button mode="contained" onPress={salvarCurso} style={{ marginTop: 20 }}>
+      <Button
+        mode="contained"
+        onPress={salvarCurso}
+        loading={enviando}
+      >
         Cadastrar Curso
       </Button>
 
@@ -124,7 +156,7 @@ export default function NovoCurso() {
         icon="arrow-left"
         mode="text"
         onPress={() => navigation.navigate('Cursos')}
-        style={{ marginBottom: 8, marginTop: 10 }}
+        style={{ marginTop: 10 }}
       >
         Voltar
       </Button>
@@ -136,6 +168,7 @@ const styles = StyleSheet.create({
   container: { padding: 24 },
   titulo: { marginBottom: 16 },
   input: { marginBottom: 12 },
+  fileName: { marginBottom: 12, fontStyle: 'italic' },
   bloqueado: {
     flex: 1,
     justifyContent: 'center',
