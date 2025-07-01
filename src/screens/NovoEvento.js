@@ -1,308 +1,267 @@
-import React, { useState } from 'react';
-import {
-  View,
-  ScrollView,
-  StyleSheet,
-  Alert,
-  Platform,
-  Image,
-} from 'react-native';
-import { Text, TextInput, Button } from 'react-native-paper';
-import { supabase } from '../config/supabase';
+import React, { useEffect, useState } from 'react';
+import { View, ScrollView, StyleSheet, Alert, Image, Platform } from 'react-native';
+import { Text, TextInput, Card, Badge, Divider, Button, useTheme, IconButton } from 'react-native-paper';
 import { useNavigation } from '@react-navigation/native';
+import { format } from 'date-fns';
+import { supabase } from '../config/supabase';
 import { useUsuario } from '../contexto/UsuarioContexto';
-import * as ImagePicker from 'expo-image-picker';
-import * as Location from 'expo-location';
-import * as FileSystem from 'expo-file-system';
-import { Buffer } from 'buffer'; // npm install buffer
+import GaleriaImagensEvento from '../componentes/galeriaImagensEvento';
+import { inscreverUsuario } from '../servicos/inscreverUsuario';
+import { cancelarInscricao } from '../servicos/cancelarinscricao';
 
-export default function NovoEvento() {
-  /* ───────────────── campos do formulário ───────────────── */
-  const [nome,       setNome]       = useState('');
-  const [dataTime,   setDataTime]   = useState('');
-  const [local,      setLocal]      = useState('');
-  const [descricao,  setDescricao]  = useState('');
-  const [totalVagas, setTotalVagas] = useState('');
+let MapView = () => null;
+let Marker = () => null;
+if (Platform.OS !== 'web') {
+  const RNMaps = require('react-native-maps');
+  MapView = RNMaps.default;
+  Marker = RNMaps.Marker;
+}
 
-  /* localização */
-  const [latitude,   setLatitude]   = useState('');
-  const [longitude,  setLongitude]  = useState('');
-  const [pegandoLoc, setPegandoLoc] = useState(false);
+export default function DetalheEvento({ route }) {
+  const {
+    id,
+    nome,
+    data,
+    local,
+    descricao,
+    vagas_disponiveis,
+    total_vagas,
+    latitude,
+    longitude,
+  } = route.params;
 
-  /* imagens */
-  const [fotos,          setFotos]          = useState([]);
-  const [carregandoFoto, setCarregandoFoto] = useState(false);
-
-  /* flags gerais */
-  const [carregando, setCarregando] = useState(false);
-
+  const theme = useTheme();
   const navigation = useNavigation();
-  const { perfil } = useUsuario();
+  const { perfil, userEmail } = useUsuario();
 
-  /* ───────────────── localização ───────────────── */
-  const pegarLocalAtual = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      return Alert.alert('Permissão negada', 'Não foi possível acessar a localização.');
+  const [inscrito, setInscrito] = useState(false);
+  const [mostrarComentarios, setMostrarComentarios] = useState(false);
+  const [mostrarImagens, setMostrarImagens] = useState(false);
+  const [comentarioTexto, setComentarioTexto] = useState('');
+  const [comentarios, setComentarios] = useState([]);
+  const [curtido, setCurtido] = useState(false);
+  const [qtdCurtidas, setQtdCurtidas] = useState(0);
+
+  useEffect(() => {
+    if (perfil?.id) {
+      carregarInscricao();
+      carregarComentarios();
+      carregarCurtidas();
     }
+  }, [perfil?.id, id]);
+
+  async function carregarInscricao() {
+    const { data } = await supabase
+      .from('inscricoes')
+      .select('id')
+      .eq('evento_id', id)
+      .eq('usuario_id', perfil.id)
+      .eq('status', 'confirmada');
+    setInscrito((data || []).length > 0);
+  }
+
+  async function carregarComentarios() {
+    const { data } = await supabase
+      .from('comentario')
+      .select('id, comentario, usuario:usuarios(nome)')
+      .eq('evento_id', id)
+      .order('id', { ascending: false });
+    setComentarios(data || []);
+  }
+
+  async function carregarCurtidas() {
+    if (!perfil?.id) return;
     try {
-      setPegandoLoc(true);
-      const { coords } = await Location.getCurrentPositionAsync({});
-      setLatitude(coords.latitude.toString());
-      setLongitude(coords.longitude.toString());
-    } catch {
-      Alert.alert('Erro', 'Falha ao obter localização.');
-    } finally {
-      setPegandoLoc(false);
-    }
-  };
-
-  /* ───────────────── upload imagem ───────────────── */
-  const uploadImagem = async (uri) => {
-    setCarregandoFoto(true);
-    try {
-      let dataToUpload, contentType;
-
-      if (Platform.OS === 'web') {
-        const resp = await fetch(uri);
-        const blob = await resp.blob();
-        dataToUpload = blob;
-        contentType = blob.type;
-      } else {
-        const b64 = await FileSystem.readAsStringAsync(uri, {
-          encoding: FileSystem.EncodingType.Base64,
-        });
-        dataToUpload = Buffer.from(b64, 'base64');
-        contentType = 'image/jpeg';
-      }
-
-      const fileName = `evento_${Date.now()}.jpg`;
-      const { error: upErr } = await supabase
-        .storage
-        .from('imagem')
-        .upload(fileName, dataToUpload, {
-          contentType,
-          cacheControl: '3600',
-          upsert: false,
-        });
-      if (upErr) throw upErr;
-
-      const { data: { publicUrl }, error: urlErr } = supabase
-        .storage
-        .from('imagem')
-        .getPublicUrl(fileName);
-      if (urlErr) throw urlErr;
-
-      return publicUrl;
-    } catch (err) {
-      Alert.alert('Erro ao enviar imagem', err.message);
-      return null;
-    } finally {
-      setCarregandoFoto(false);
-    }
-  };
-
-  /* ───────────────── pickers imagem ───────────────── */
-  const tirarFoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') return Alert.alert('Permissão da câmera negada');
-    const res = await ImagePicker.launchCameraAsync({ quality: 0.7, allowsEditing: true });
-    if (!res.canceled) setFotos(p => [...p, res.assets[0].uri]);
-  };
-
-  const escolherDaGaleria = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') return Alert.alert('Permissão negada');
-    const res = await ImagePicker.launchImageLibraryAsync({
-      allowsMultipleSelection: true,
-      quality: 0.7,
-    });
-    if (!res.canceled) {
-      const uris = res.assets.map(a => a.uri);
-      setFotos(p => [...p, ...uris]);
-    }
-  };
-
-  const selecionarImagem = () =>
-    Alert.alert('Adicionar Imagem', 'Escolha a origem:', [
-      { text: 'Câmera',  onPress: tirarFoto },
-      { text: 'Galeria', onPress: escolherDaGaleria },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
-
-  /* ───────────────── submit ───────────────── */
-  const salvarEvento = async () => {
-    // validações iniciais
-    if (!nome || !dataTime || !local || !descricao || !totalVagas || !latitude || !longitude) {
-      return Alert.alert('Campos obrigatórios', 'Preencha todos os campos.');
-    }
-    const vagasInt = parseInt(totalVagas, 10);
-    const lat = parseFloat(latitude);
-    const lon = parseFloat(longitude);
-    if (isNaN(vagasInt) || vagasInt <= 0) return Alert.alert('Total de vagas inválido');
-    if (isNaN(lat) || isNaN(lon))     return Alert.alert('Latitude/Longitude inválidas');
-
-    // valida e formata data
-    let isoString;
-    const entrada = dataTime.trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(entrada)) {
-      isoString = `${entrada}T00:00:00`;
-    } else if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}$/.test(entrada)) {
-      const t = entrada.replace(' ', 'T');
-      isoString = `${t}:00`;
-    } else {
-      return Alert.alert(
-        'Data inválida',
-        'Use um destes formatos:\n' +
-        '• 2025-07-15\n' +
-        '• 2025-07-15 14:30\n' +
-        '• 2025-07-15T14:30'
-      );
-    }
-    const dataEvento = new Date(isoString);
-    if (isNaN(dataEvento.getTime())) {
-      return Alert.alert('Data inválida', 'Não foi possível interpretar essa data.');
-    }
-
-    setCarregando(true);
-    try {
-      // INSERT + SELECT + SINGLE para obter evento.id
-      const { data: evento, error: evErr } = await supabase
+      const { data: evData, error: evErr } = await supabase
         .from('eventos')
-        .insert([{
-          nome,
-          data: dataEvento.toISOString(),
-          local,
-          descricao,
-          inscricao: true,
-          total_vagas: vagasInt,
-          vagas_disponiveis: vagasInt,
-          latitude: lat,
-          longitude: lon,
-        }])
-        .select()
+        .select('qtd_curtidas')
+        .eq('id', id)
         .single();
+      if (evErr) throw evErr;
+      setQtdCurtidas(evData.qtd_curtidas);
 
-      if (evErr || !evento?.id) {
-        throw evErr || new Error('Não foi possível criar o evento');
-      }
-
-      // upload e gravação das imagens
-      for (const uri of fotos) {
-        const url = await uploadImagem(uri);
-        if (url) {
-          const { error: imgErr } = await supabase
-            .from('imagem')
-            .insert([{ evento_id: evento.id, usuario_id: perfil.id, url_imagem: url }]);
-          if (imgErr) console.warn('Falha ao salvar imagem:', imgErr);
-        }
-      }
-
-      Alert.alert('Sucesso', 'Evento cadastrado!');
-      navigation.navigate('Eventos');
-    } catch (err) {
-      console.error('❌ ERRO salvarEvento', err);
-      Alert.alert('Falha', err.message || 'Erro desconhecido');
-    } finally {
-      setCarregando(false);
+      const { count, error: cntErr } = await supabase
+        .from('curtidas')
+        .select('id', { count: 'exact', head: true })
+        .eq('evento_id', id)
+        .eq('usuario_id', perfil.id);
+      if (cntErr) throw cntErr;
+      setCurtido(count > 0);
+    } catch {
+      setQtdCurtidas(0);
+      setCurtido(false);
     }
-  };
+  }
 
-  // bloqueio para não-admin
+  async function alternarCurtida() {
+    if (!perfil) return;
+    try {
+      if (curtido) {
+        await supabase.from('curtidas').delete().match({ evento_id: id, usuario_id: perfil.id });
+        await supabase.from('eventos').update({ qtd_curtidas: qtdCurtidas - 1 }).eq('id', id);
+      } else {
+        await supabase.from('curtidas').insert({ evento_id: id, usuario_id: perfil.id });
+        await supabase.from('eventos').update({ qtd_curtidas: qtdCurtidas + 1 }).eq('id', id);
+      }
+      await carregarCurtidas();
+    } catch {
+      Alert.alert('Erro', 'Não foi possível atualizar a curtida.');
+    }
+  }
+
+  async function enviarComentario() {
+    if (!comentarioTexto.trim()) return;
+    const { error } = await supabase
+      .from('comentario')
+      .insert({ evento_id: id, usuario_id: perfil.id, comentario: comentarioTexto });
+    if (!error) {
+      setComentarioTexto('');
+      carregarComentarios();
+    }
+  }
+
+  async function enviarEmailConfirmacao(to, tituloEvento, dataEvento) {
+    if (!to) return;
+
+    const payload = {
+      to,
+      subject: `Confirmação de inscrição: ${tituloEvento}`,
+      html: `<p>Você está inscrito no evento <strong>${tituloEvento}</strong> em ${new Date(dataEvento).toLocaleDateString()}.</p>`,
+    };
+
+    try {
+      const { data, error } = await supabase.functions.invoke('envio-email', { body: JSON.stringify(payload) });
+      if (error) return;
+      return data;
+    } catch {
+      // erro ignorado
+    }
+  }
+
+  const agora = new Date();
+  const dataEvento = new Date(data);
+  const badgeText = inscrito
+    ? 'Você já está inscrito'
+    : agora > dataEvento
+    ? 'Inscrições encerradas'
+    : 'Inscrições abertas';
+  const badgeColor = inscrito
+    ? theme.colors.primary
+    : agora > dataEvento
+    ? theme.colors.disabled
+    : theme.colors.secondary;
+
   if (!perfil || perfil.tipo !== 'admin') {
     return (
       <ScrollView contentContainerStyle={styles.container}>
-        <Text variant="titleLarge" style={{ marginBottom: 16 }}>
-          Usuário sem permissão
-        </Text>
-        <Button mode="contained" onPress={() => navigation.goBack()}>
-          Voltar
-        </Button>
+        <Text variant="titleLarge" style={{ marginBottom: 16 }}>Usuário sem permissão</Text>
+        <Button mode="contained" onPress={() => navigation.goBack()}>Voltar</Button>
       </ScrollView>
     );
   }
 
-  // UI
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text variant="titleLarge" style={{ marginBottom: 16 }}>
-        Cadastrar novo evento
-      </Text>
+      <Card mode="outlined" style={styles.card}>
+        <Card.Content>
+          <View style={styles.header}>
+            <Text variant="titleLarge">{nome}</Text>
+            <Badge style={[styles.badge, { backgroundColor: badgeColor }]}>{badgeText}</Badge>
+          </View>
 
-      <TextInput label="Nome" value={nome} onChangeText={setNome} style={styles.input} />
-      <TextInput
-        label="Data (AAAA-MM-DD HH:MM)"
-        value={dataTime}
-        onChangeText={setDataTime}
-        style={styles.input}
-      />
-      <TextInput label="Local" value={local} onChangeText={setLocal} style={styles.input} />
-      <TextInput label="Descrição" value={descricao} onChangeText={setDescricao} style={styles.input} />
-      <TextInput
-        label="Total de vagas"
-        value={totalVagas}
-        onChangeText={setTotalVagas}
-        style={styles.input}
-        keyboardType="numeric"
-      />
+          <Divider style={styles.divisor} />
+          <Text>📅 Data: {format(dataEvento, 'dd/MM/yyyy')}</Text>
+          <Text>📍 Local: {local}</Text>
+          <Text>Vagas disponíveis: {vagas_disponiveis}</Text>
+          <Text>Total de vagas: {total_vagas}</Text>
 
-      <TextInput
-        label="Latitude"
-        value={latitude}
-        onChangeText={setLatitude}
-        style={styles.input}
-        keyboardType="numeric"
-      />
-      <TextInput
-        label="Longitude"
-        value={longitude}
-        onChangeText={setLongitude}
-        style={styles.input}
-        keyboardType="numeric"
-      />
+          <Divider style={styles.divisor} />
+          <Text variant="titleSmall" style={styles.subtitulo}>Descrição:</Text>
+          <Text style={styles.descricao}>{descricao}</Text>
 
-      <Button mode="outlined" onPress={pegarLocalAtual} loading={pegandoLoc}>
-        Usar minha localização
-      </Button>
+          {latitude && longitude && (
+            <View style={{ marginTop: 12 }}>
+              {Platform.OS === 'web' ? (
+                <Button
+                  mode="outlined"
+                  onPress={() => window.open(`https://www.openstreetmap.org/?mlat=${latitude}&mlon=${longitude}#map=17/${latitude}/${longitude}`, '_blank')}
+                >
+                  Ver mapa
+                </Button>
+              ) : (
+                <View style={{ height: 200 }}>
+                  <MapView
+                    style={{ flex: 1, borderRadius: 8 }}
+                    region={{ latitude: Number(latitude), longitude: Number(longitude), latitudeDelta: 0.005, longitudeDelta: 0.005 }}
+                  >
+                    <Marker coordinate={{ latitude: Number(latitude), longitude: Number(longitude) }} />
+                  </MapView>
+                </View>
+              )}
+            </View>
+          )}
 
-      <Button mode="outlined" onPress={selecionarImagem} style={{ marginTop: 20 }}>
-        Adicionar imagens
-      </Button>
+          <Divider style={styles.divisor} />
 
-      {Platform.OS === 'web' && (
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          onChange={e => {
-            const uris = [...e.target.files].map(f => URL.createObjectURL(f));
-            setFotos(p => [...p, ...uris]);
-          }}
-          style={{ marginTop: 10 }}
-        />
-      )}
+          <View style={styles.info}>
+            <IconButton icon="comment-outline" onPress={() => setMostrarComentarios(!mostrarComentarios)} />
+            <Text>{comentarios.length}</Text>
+            <IconButton icon={curtido ? 'heart' : 'heart-outline'} iconColor={curtido ? theme.colors.primary : undefined} onPress={alternarCurtida} />
+            <Text>{qtdCurtidas}</Text>
+            <IconButton icon="image-outline" onPress={() => setMostrarImagens(!mostrarImagens)} />
+          </View>
 
-      {fotos.length > 0 && (
-        <View style={{ marginTop: 10 }}>
-          {fotos.map((uri, i) => (
-            <Image key={i} source={{ uri }} style={styles.preview} />
-          ))}
-        </View>
-      )}
+          {mostrarImagens && (
+            <View style={{ marginTop: 10 }}>
+              <Text variant="titleMedium" style={{ marginBottom: 8 }}>Imagens do Evento</Text>
+              <GaleriaImagensEvento eventoId={id} />
+            </View>
+          )}
 
-      <Button mode="contained" onPress={salvarEvento} loading={carregando} style={{ marginTop: 20 }}>
-        Cadastrar Evento
-      </Button>
+          {mostrarComentarios && (
+            <View style={{ marginTop: 16 }}>
+              <Text variant="titleMedium">Comentários</Text>
+              {comentarios.map(item => (
+                <View key={item.id} style={{ marginTop: 8 }}>
+                  <Text style={{ fontWeight: 'bold' }}>{item.usuario?.nome}</Text>
+                  <Text>{item.comentario}</Text>
+                </View>
+              ))}
+              <TextInput label="Novo comentário" value={comentarioTexto} onChangeText={setComentarioTexto} multiline mode="outlined" style={{ marginTop: 12 }} />
+              <Button mode="contained" onPress={enviarComentario} style={{ marginTop: 8 }}>Enviar</Button>
+            </View>
+          )}
+        </Card.Content>
 
-      <Button icon="arrow-left" mode="text" onPress={() => navigation.goBack()} style={{ marginTop: 8 }}>
-        Voltar
-      </Button>
+        {!inscrito && agora <= dataEvento && (
+          <Button mode="contained" style={styles.botaoInscrever} onPress={async () => {
+            await inscreverUsuario({ eventoId: id, perfil });
+            setInscrito(true);
+            await enviarEmailConfirmacao(userEmail, nome, data);
+            Alert.alert('Inscrição confirmada', 'Verifique seu e-mail para detalhes.');
+          }}>Quero me inscrever</Button>
+        )}
+        {inscrito && (
+          <Button mode="outlined" style={{ marginTop: 10 }} onPress={async () => {
+            await cancelarInscricao(id);
+            setInscrito(false);
+          }}>Cancelar inscrição</Button>
+        )}
+      </Card>
+      <Button mode="outlined" onPress={() => navigation.navigate('Eventos')} style={styles.botaoVoltar}>Voltar</Button>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20 },
-  input:     { marginBottom: 12 },
-  preview:   { width: 200, height: 200, borderRadius: 10, marginBottom: 10 },
+  container: { padding: 16 },
+  card: { marginBottom: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  badge: { color: '#fff', paddingHorizontal: 10, fontSize: 12 },
+  divisor: { marginVertical: 12 },
+  subtitulo: { marginBottom: 4 },
+  descricao: { marginTop: 8, lineHeight: 20 },
+  botaoInscrever: { marginTop: 10 },
+  botaoVoltar: { marginTop: 10 },
+  info: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', marginBottom: 8 },
 });

@@ -8,7 +8,7 @@ const curtirEvento = async (eventoId) => {
     if (error) {
       Alert.alert('Erro ao curtir evento', error.message);
     } else {
-      carregarEventosInscritos(); // recarrega lista com novas curtidas
+      carregarEventosInscritos(); 
     }
   } catch (e) {
     Alert.alert('Erro inesperado', e.message);

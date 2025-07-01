@@ -36,10 +36,9 @@ export default function Login() {
     const user = data.user;
 
     if (user) { 
-      // buscar dados complementares da tabela usuarios
       const { data: perfilUsuario, error: erroPerfil } = await supabase
   .from('usuarios')
-  .select('id, nome, tipo, foto_usuario') // liste só os campos realmente existentes
+  .select('id, nome, tipo, foto_usuario') 
   .eq('id', user.id)
   .single();
 
